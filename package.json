@@ -1,0 +1,62 @@
+{
+  "name": "Shlimazl",
+  "version": "3.0.4",
+  "description": "Shlimazlbot by @Shlimazl31",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node ./src/index.js",
+    "format": "prettier -w ./src"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "axios": "^1.9.0",
+    "cors": "^2.8.5",
+    "discord-hybrid-sharding": "^2.2.6",
+    "discord.js": "^14.19.3",
+    "dotenv": "^16.5.0",
+    "express": "^5.1.0",
+    "google-search-url": "^0.1.8",
+    "llyrics": "^1.1.7",
+    "lodash": "^4.17.21",
+    "lunox": "^1.7.1",
+    "moment": "^2.30.1",
+    "mongoose": "8.15.0",
+    "node-cron": "4.0.7",
+    "pretty-ms": "^9.2.0",
+    "rainlink": "^1.2.7",
+    "rainlink-voice": "^1.0.1",
+    "node-fetch2": "1.6.3"
+  },
+  "devDependencies": {
+    "prettier": "^3.5.3"
+  },
+  "keywords": [
+    "discord",
+    "bot",
+    "lunox",
+    "music",
+    "music bot",
+    "discord bot",
+    "discord.js",
+    "discord music bot",
+    "discord.js music bot",
+    "lavalink",
+    "lavalink bot",
+    "lavalink discord bot",
+    "lavalink music bot",
+    "lavalink discord.js",
+    "lavalink discord.js music bot"
+  ],
+  "author": "Shlimazl31",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/shlimazl31/Shlimazlbot.git"
+  },
+  "bugs": {
+    "url": "https://github.com/shlimazl31/shlimazlbot#issues"
+  },
+  "homepage": "https://github.com/shlimazl31/shlimazlbot/#readme"
+}

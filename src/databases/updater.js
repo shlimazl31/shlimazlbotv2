@@ -9,7 +9,7 @@ module.exports = async (client) => {
         }
     };
 
-    cron.schedule("*/600 * * * * *", async () => {
+    cron.schedule("0 */10 * * * *", async () => {
         try {
             const guilds = await client.guildData.find();
             await updateSettings(guilds, client.data, client.guildData, "guildData");

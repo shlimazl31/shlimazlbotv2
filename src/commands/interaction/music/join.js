@@ -1,4 +1,5 @@
 const { EmbedBuilder, MessageFlags } = require("discord.js");
+const getBestLavalinkNode = require("../../../functions/getBestLavalinkNode.js");
 
 module.exports = {
     name: "join",
@@ -22,12 +23,15 @@ module.exports = {
 
             return interaction.reply({ embeds: [embed], flags: [MessageFlags.Ephemeral] });
         } else {
+            const nodeName = await getBestLavalinkNode(client);
+
             player = await client.rainlink.create({
                 guildId: interaction.guildId,
                 textId: interaction.channelId,
                 voiceId: interaction.member.voice.channelId,
                 shardId: interaction.guild.shardId,
                 volume: client.config.defaultVolume,
+                ...(nodeName && { nodeName }),
                 deaf: true,
             });
 

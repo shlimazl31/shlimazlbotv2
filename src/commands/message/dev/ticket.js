@@ -1,4 +1,4 @@
-const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, PermissionFlagsBits } = require("discord.js");
+const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require("discord.js");
 
 module.exports = {
     name: "ticket",
@@ -16,48 +16,47 @@ module.exports = {
     },
     devOnly: true,
     run: async (client, message, args) => {
+        const embed = new EmbedBuilder().setColor(client.config.embedColor);
+
         try {
-            // Sadece belirli sunucuda çalışsın
             if (message.guild.id !== "1341164136079294487") {
-                return message.reply("Bu komut sadece destek sunucusunda kullanılabilir.");
-            }
-
-            const embed = new EmbedBuilder().setColor(client.config.embedColor);
-
-            // Kanal belirtilmemişse
-            if (!message.mentions.channels.size && !args[0]) {
-                embed.setDescription("Lütfen bir kanal belirtin.\nÖrnek: `!ticket #kanal`");
+                embed.setDescription("Bu komut sadece destek sunucusunda kullanilabilir.");
                 return message.reply({ embeds: [embed] });
             }
 
-            // Kanalı bul
+            if (!message.mentions.channels.size && !args[0]) {
+                embed.setDescription("Lutfen bir kanal belirtin.\nOrnek: `!ticket #kanal`");
+                return message.reply({ embeds: [embed] });
+            }
+
             const channel = message.mentions.channels.first() || message.guild.channels.cache.get(args[0]);
             if (!channel) {
-                embed.setDescription("Geçerli bir kanal belirtin.");
+                embed.setDescription("Gecerli bir kanal belirtin.");
                 return message.reply({ embeds: [embed] });
             }
 
             const ticketEmbed = new EmbedBuilder()
                 .setColor(client.config.embedColor)
-                .setTitle("🎫 Destek Talebi")
-                .setDescription("Destek almak için aşağıdaki butona tıklayın.")
+                .setTitle("Destek Talebi")
+                .setDescription("Destek almak icin asagidaki butona tiklayin.")
                 .setFooter({ text: `${message.guild.name} | Ticket Sistemi` });
 
             const row = new ActionRowBuilder().addComponents(
                 new ButtonBuilder()
                     .setCustomId("create_ticket")
-                    .setLabel("Ticket Oluştur")
+                    .setLabel("Ticket Olustur")
                     .setEmoji("🎫")
                     .setStyle(ButtonStyle.Primary)
             );
 
             await channel.send({ embeds: [ticketEmbed], components: [row] });
 
-            embed.setDescription("Ticket sistemi başarıyla kuruldu!");
+            embed.setDescription("Ticket sistemi basariyla kuruldu.");
             return message.reply({ embeds: [embed] });
         } catch (error) {
-            console.error("Ticket komutu hatası:", error);
-            return message.reply("Komut çalıştırılırken bir hata oluştu.");
+            console.error("Ticket komutu hatasi:", error);
+            embed.setDescription("Komut calistirilirken bir hata olustu.");
+            return message.reply({ embeds: [embed] });
         }
     }
-}; 
+};

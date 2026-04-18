@@ -6,12 +6,11 @@ const updateApiStatus = async (client, servers, members) => {
     try {
         await axios.post("https://api.benbotdegilim.online/api/bot/status", {
             ip: "173.212.247.209",
-            servers: servers,
-            members: members,
-            status: "online"
+            servers,
+            members,
+            status: "online",
         });
     } catch (error) {
-        // Hata mesajını sadece debug modunda göster
         if (process.env.DEBUG) {
             console.error("[DEBUG] API status update failed:", error.message);
         }
@@ -23,7 +22,7 @@ module.exports = async (client) => {
 
     const guildData = await client.guildData.find();
 
-    guildData.forEach(async (x) => {
+    guildData.forEach((x) => {
         const { _id, __v, ...data } = x.toObject();
 
         client.data.set(`guildData_${x.id}`, data);
@@ -31,7 +30,7 @@ module.exports = async (client) => {
 
     const userData = await client.userData.find();
 
-    userData.forEach(async (x) => {
+    userData.forEach((x) => {
         const { _id, __v, ...data } = x.toObject();
 
         client.data.set(`userData_${x.id}`, data);
@@ -48,7 +47,6 @@ module.exports = async (client) => {
         const servers = results[0].reduce((acc, guildCount) => acc + guildCount, 0);
         const members = results[1].reduce((acc, memberCount) => acc + memberCount, 0);
 
-        // API durumunu güncelle
         await updateApiStatus(client, servers, members);
 
         const status = [
@@ -63,5 +61,5 @@ module.exports = async (client) => {
         client.user.setPresence(presenceOptions);
     }, 5000);
 
-    console.log(`[INFO] ${client.user.username} is ready with ${await client.guilds.cache.size} server`);
+    console.log(`[INFO] ${client.user.username} is ready with ${client.guilds.cache.size} server`);
 };

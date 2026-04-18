@@ -21,6 +21,12 @@ class MainClient extends Client {
             partials: [Partials.Message, Partials.Channel, Partials.Reaction],
         });
 
+        const originalOn = this.on.bind(this);
+        const originalOnce = this.once.bind(this);
+
+        this.on = (eventName, listener) => originalOn(eventName === "ready" ? "clientReady" : eventName, listener);
+        this.once = (eventName, listener) => originalOnce(eventName === "ready" ? "clientReady" : eventName, listener);
+
         this.config = require("../settings/config.js");
         this.guildData = require("../databases/schema/guild.js");
         this.userData = require("../databases/schema/user.js");

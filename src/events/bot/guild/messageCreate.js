@@ -1,5 +1,6 @@
-const { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, PermissionsBitField } = require("discord.js");
+const { EmbedBuilder } = require("discord.js");
 const { createDataGuild, createDataUser } = require("../../../functions/createData.js");
+const createSupportComponents = require("../../../functions/createSupportComponents.js");
 const { permissions } = require("../../../functions/getPermission.js");
 
 module.exports = async (client, message) => {
@@ -10,9 +11,7 @@ module.exports = async (client, message) => {
 
     const userData = client.data.get(`userData_${message.author.id}`);
     const embed = new EmbedBuilder().setColor(client.config.embedColor);
-    const row = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setLabel("Support Server").setURL(client.config.supportServerUrl).setStyle(ButtonStyle.Link),
-    );
+    const components = createSupportComponents(client.config.supportServerUrl);
 
     const botPermissions = ["ViewChannel", "SendMessages", "EmbedLinks"];
     const botMissingPermissions = [];
@@ -22,18 +21,20 @@ module.exports = async (client, message) => {
     }
 
     if (botMissingPermissions.length > 0) {
-        const content = `The bot doesn't have one of these permissions \`${botMissingPermissions.join(", ")}\`.\nPlease double check them in your server role & channel settings.`;
+        const permissionEmbed = new EmbedBuilder()
+            .setColor(client.config.embedColor)
+            .setDescription(
+                `The bot doesn't have one of these permissions \`${botMissingPermissions.join(", ")}\`.\nPlease double check them in your server role & channel settings.`,
+            );
 
         const dmChannel = message.author.dmChannel == null ? await message.author.createDM() : message.author.dmChannel;
-
-        return dmChannel.send({ content: content, components: [row] });
+        return dmChannel.send({ embeds: [permissionEmbed], components });
     }
 
     const mention = new RegExp(`^<@!?${client.user.id}>( |)$`);
 
     if (message.content.match(mention)) {
-        embed.setDescription(`Use \`/help\` command to get list of commands.`);
-
+        embed.setDescription("Use `/help` command to get list of commands.");
         message.reply({ embeds: [embed] });
     }
 
@@ -66,28 +67,16 @@ module.exports = async (client, message) => {
 
     if (userData && userData.ban.status) {
         embed.setDescription(`You have been banned from using the bot.\n\`\`\`${userData.ban.reason}\`\`\``);
-
         return message.reply({ embeds: [embed] });
     }
 
     const maintenance = client.data.get("maintenance");
 
     if (maintenance && !client.config.dev.includes(message.author.id)) {
-        embed.setDescription(`The bot is currently under maintenance. Please try again later.`);
-
+        embed.setDescription("The bot is currently under maintenance. Please try again later.");
         return message.reply({ embeds: [embed] });
     }
 
-    let player = client.rainlink.players.get(message.guildId);
-
+    const player = client.rainlink.players.get(message.guildId);
     return permissions(client, message, command, embed, player, args);
 };
-
-/**
- * Project: Lunox
- * Author: adh319
- * Company: EnourDev
- * This code is the property of EnourDev and may not be reproduced or
- * modified without permission. For more information, contact us at
- * https://discord.gg/xhTVzbS5NU
- */

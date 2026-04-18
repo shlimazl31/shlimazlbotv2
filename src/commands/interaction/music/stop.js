@@ -1,8 +1,9 @@
-const { EmbedBuilder, MessageFlags } = require("discord.js");
+const { MessageFlags } = require("discord.js");
+const { createStatusEmbed } = require("../../../functions/createResponseEmbed.js");
 
 module.exports = {
     name: "stop",
-    description: "Müziği durdur",
+    description: "Muzigi durdur",
     category: "music",
     permissions: {
         bot: [],
@@ -15,24 +16,22 @@ module.exports = {
     },
     devOnly: false,
     run: async (client, interaction, player) => {
-        const embed = new EmbedBuilder().setColor(client.config.embedColor);
+        const embed = createStatusEmbed(client, { tone: "warning", title: "Stop" });
         const guildData = client.data.get(`guildData_${interaction.guildId}`) || { dj: { status: false, role: null } };
 
-        // DJ kontrolü
         if (guildData?.dj?.status) {
             const hasDJRole = interaction.member.roles.cache.has(guildData.dj.role);
             const isAdmin = interaction.member.permissions.has("ManageGuild");
-            
+
             if (!hasDJRole && !isAdmin) {
-                embed.setDescription(`Bu komutu kullanmak için DJ rolüne sahip olmalısınız.`);
+                embed.setDescription("Bu komutu kullanmak icin DJ rolune veya yonetici yetkisine sahip olmalisin.");
                 return interaction.reply({ embeds: [embed], flags: [MessageFlags.Ephemeral] });
             }
         }
 
         player.stop();
 
-        embed.setDescription(`Müzik durduruldu ve sıra temizlendi.`);
-
+        embed.setDescription("Muzik durduruldu. Oynatici ve kuyruk temizlendi.");
         return interaction.reply({ embeds: [embed], flags: [MessageFlags.Ephemeral] });
     },
 };

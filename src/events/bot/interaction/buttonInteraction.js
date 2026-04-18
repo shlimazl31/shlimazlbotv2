@@ -1,14 +1,24 @@
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ChannelType, PermissionFlagsBits, MessageFlags } = require("discord.js");
 
+function createTicketChannelName(user) {
+    const slug = user.username
+        .toLowerCase()
+        .replace(/[^a-z0-9-]/g, "-")
+        .replace(/-+/g, "-")
+        .replace(/^-|-$/g, "")
+        .slice(0, 40);
+
+    return `ticket-${slug || "user"}-${user.id.slice(-6)}`;
+}
+
 module.exports = async (client, interaction) => {
     if (!interaction.isButton()) return;
 
-    // Sadece belirli sunucuda çalışsın
     if (interaction.guildId !== "1341164136079294487") return;
 
     if (interaction.customId === "create_ticket") {
         const ticketChannel = await interaction.guild.channels.create({
-            name: `ticket-${interaction.user.username}`,
+            name: createTicketChannelName(interaction.user),
             type: ChannelType.GuildText,
             parent: interaction.channel.parent,
             permissionOverwrites: [
@@ -29,20 +39,25 @@ module.exports = async (client, interaction) => {
 
         const ticketEmbed = new EmbedBuilder()
             .setColor(client.config.embedColor)
-            .setTitle("🎫 Ticket Oluşturuldu")
-            .setDescription(`Merhaba ${interaction.user}, destek talebiniz oluşturuldu. Lütfen sorununuzu detaylı bir şekilde anlatın.`)
+            .setTitle("Ticket Olusturuldu")
+            .setDescription(`Merhaba ${interaction.user}, destek talebiniz olusturuldu. Lutfen sorununuzu detayli bir sekilde anlatin.`)
             .setFooter({ text: `${interaction.guild.name} | Ticket Sistemi` });
 
         const row = new ActionRowBuilder().addComponents(
             new ButtonBuilder()
                 .setCustomId("close_ticket")
-                .setLabel("Ticket'ı Kapat")
+                .setLabel("Ticket'i Kapat")
                 .setEmoji("🔒")
                 .setStyle(ButtonStyle.Danger)
         );
 
         await ticketChannel.send({ embeds: [ticketEmbed], components: [row] });
-        await interaction.reply({ content: `Ticket kanalınız oluşturuldu: ${ticketChannel}`, flags: [MessageFlags.Ephemeral] });
+
+        const successEmbed = new EmbedBuilder()
+            .setColor(client.config.embedColor)
+            .setDescription(`Ticket kanaliniz olusturuldu: ${ticketChannel}`);
+
+        await interaction.reply({ embeds: [successEmbed], flags: [MessageFlags.Ephemeral] });
     }
 
     if (interaction.customId === "close_ticket") {
@@ -51,7 +66,7 @@ module.exports = async (client, interaction) => {
 
         const closeEmbed = new EmbedBuilder()
             .setColor(client.config.embedColor)
-            .setDescription("Bu ticket 5 saniye içinde kapatılacak...");
+            .setDescription("Bu ticket 5 saniye icinde kapatilacak...");
 
         await interaction.reply({ embeds: [closeEmbed] });
 
@@ -59,4 +74,4 @@ module.exports = async (client, interaction) => {
             await channel.delete();
         }, 5000);
     }
-}; 
+};

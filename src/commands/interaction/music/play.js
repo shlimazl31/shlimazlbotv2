@@ -1,13 +1,14 @@
-const { EmbedBuilder } = require("discord.js");
+const getBestLavalinkNode = require("../../../functions/getBestLavalinkNode.js");
+const { createStatusEmbed } = require("../../../functions/createResponseEmbed.js");
 
 module.exports = {
     name: "play",
-    description: "Bir şarkı çal",
+    description: "Bir sarki cal",
     category: "music",
     options: [
         {
             name: "query",
-            description: "Şarkı adı veya URL girin",
+            description: "Sarki adi veya URL girin",
             type: 3,
             required: true,
         },
@@ -24,10 +25,14 @@ module.exports = {
     devOnly: false,
     run: async (client, interaction, player) => {
         await interaction.deferReply();
-        const embed = new EmbedBuilder().setColor(client.config.embedColor);
+        const embed = createStatusEmbed(client, {
+            tone: "success",
+            title: "Play",
+            eyebrow: "Muzik baslatiliyor",
+        });
 
         if (player && player.voiceId !== interaction.member.voice.channelId) {
-            embed.setDescription(`Bot ile aynı ses kanalında olmalısın.`);
+            embed.setDescription("Bot ile ayni ses kanalinda olmalisin.");
             return interaction.editReply({ embeds: [embed] });
         }
 
@@ -35,17 +40,18 @@ module.exports = {
 
         try {
             const source = detectSource(query);
+            const nodeName = player ? player.node.options.name : await getBestLavalinkNode(client);
 
             const result = await client.rainlink.search(query, {
                 requester: interaction.member,
-                ...(source && { source })
+                ...(nodeName && { nodeName }),
+                ...(source && { source }),
             });
 
             return handleSearchResult(client, result, player, interaction, embed);
-
         } catch (error) {
-            console.error("Arama hatası:", error);
-            embed.setDescription(`Arama sırasında bir hata oluştu: ${error.message}`);
+            console.error("Arama hatasi:", error);
+            embed.setDescription(`Arama sirasinda bir hata olustu: ${error.message}`);
             return interaction.editReply({ embeds: [embed] });
         }
     },
@@ -61,32 +67,52 @@ function detectSource(query) {
 
 async function handleSearchResult(client, result, player, interaction, embed) {
     if (result.type === "EMPTY" || result.type === "ERROR" || !result.tracks.length) {
-        embed.setDescription(`Aramanız için sonuç bulunamadı.`);
+        embed.setDescription("Aramaniz icin sonuc bulunamadi.");
         return interaction.editReply({ embeds: [embed] });
     }
 
     if (!player) {
+        const nodeName = await getBestLavalinkNode(client);
+
         player = await client.rainlink.create({
             guildId: interaction.guildId,
             textId: interaction.channelId,
             voiceId: interaction.member.voice.channelId,
             shardId: interaction.guild.shardId,
             volume: client.config.defaultVolume,
+            ...(nodeName && { nodeName }),
             deaf: true,
         });
     }
 
     if (result.type === "PLAYLIST") {
         player.queue.add(result.tracks);
-        embed.setDescription(`\`${result.playlistName}\` adlı çalma listesi, \`${result.tracks.length}\` şarkı ile sıraya eklendi.`);
-        console.log(`[PLAYLIST] ${result.playlistName} (${result.tracks.length} şarkı) sıraya eklendi.`);
+        embed.setThumbnail(result.tracks[0]?.artworkUrl || interaction.guild.iconURL());
+        embed.setDescription([
+            `**${result.playlistName}** kuyruga eklendi.`,
+            `Toplam \`${result.tracks.length}\` sarki simdi hazir.`,
+            "Oynatma karti ilk sarkida otomatik yenilenecek.",
+        ].join("\n"));
+        console.log(`[PLAYLIST] ${result.playlistName} (${result.tracks.length} sarki) siraya eklendi.`);
     } else {
         player.queue.add(result.tracks[0]);
-        embed.setDescription(`\`${result.tracks[0].title}\` sıraya eklendi.`);
-        console.log(`[TRACK] ${result.tracks[0].title} sıraya eklendi.`);
+        embed.setThumbnail(result.tracks[0].artworkUrl || interaction.guild.iconURL());
+        embed.setDescription([
+            `**${result.tracks[0].title}** kuyruga eklendi.`,
+            `${result.tracks[0].author || "Bilinmiyor"}  |  \`${result.tracks[0].isStream ? "CANLI" : millisToClock(result.tracks[0].duration)}\``,
+            "Oynatma karti baslayinca otomatik acilacak.",
+        ].join("\n"));
+        console.log(`[TRACK] ${result.tracks[0].title} siraya eklendi.`);
     }
 
     if (!player.playing) player.play();
 
     return interaction.editReply({ embeds: [embed] });
+}
+
+function millisToClock(value) {
+    const totalSeconds = Math.floor(value / 1000);
+    const minutes = String(Math.floor(totalSeconds / 60)).padStart(2, "0");
+    const seconds = String(totalSeconds % 60).padStart(2, "0");
+    return `${minutes}:${seconds}`;
 }

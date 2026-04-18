@@ -1,8 +1,10 @@
-const { EmbedBuilder, MessageFlags } = require("discord.js");
+const { MessageFlags } = require("discord.js");
+const { createStatusEmbed } = require("../../../functions/createResponseEmbed.js");
+const { refreshNowPlayingMessage } = require("../../../functions/createNowPlayingCard.js");
 
 module.exports = {
     name: "shuffle",
-    description: "Sırayı karıştır",
+    description: "Sirayi karistir",
     category: "music",
     permissions: {
         bot: [],
@@ -15,24 +17,22 @@ module.exports = {
     },
     devOnly: false,
     run: async (client, interaction, player) => {
-        const embed = new EmbedBuilder().setColor(client.config.embedColor);
+        const embed = createStatusEmbed(client, { tone: "success", title: "Karistir" });
 
         if (player.queue.isEmpty) {
-            embed.setDescription(`Sıra boş. Karıştırma yapılamaz.`);
-
+            embed.setDescription("Kuyruk bos. Karistirma yapilamaz.");
             return interaction.reply({ embeds: [embed], flags: [MessageFlags.Ephemeral] });
         }
 
         if (player.queue.length <= 1) {
-            embed.setDescription(`Sırada sadece bir şarkı var. Karıştırma yapılamaz.`);
-
+            embed.setDescription("Kuyrukta sadece bir sarki var. Karistirmaya gerek yok.");
             return interaction.reply({ embeds: [embed], flags: [MessageFlags.Ephemeral] });
         }
 
         player.queue.shuffle();
+        await refreshNowPlayingMessage(client, player);
 
-        embed.setDescription(`Sıra karıştırıldı.`);
-
+        embed.setDescription("Kuyruk sirasi karistirildi.");
         return interaction.reply({ embeds: [embed], flags: [MessageFlags.Ephemeral] });
     },
 };

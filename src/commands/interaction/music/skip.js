@@ -1,8 +1,10 @@
-const { EmbedBuilder, MessageFlags } = require("discord.js");
+const { MessageFlags } = require("discord.js");
+const { createStatusEmbed } = require("../../../functions/createResponseEmbed.js");
+const { refreshNowPlayingMessage } = require("../../../functions/createNowPlayingCard.js");
 
 module.exports = {
     name: "skip",
-    description: "Şarkıyı atla",
+    description: "Sarkiyi atla",
     category: "music",
     permissions: {
         bot: [],
@@ -15,109 +17,96 @@ module.exports = {
     },
     devOnly: false,
     run: async (client, interaction, player) => {
-        const embed = new EmbedBuilder().setColor(client.config.embedColor);
+        const embed = createStatusEmbed(client, { tone: "warning", title: "Skip" });
         const guildData = client.data.get(`guildData_${interaction.guildId}`) || { dj: { status: false, role: null } };
-
-        // DJ kontrolü
         const hasDJRole = guildData?.dj?.status && interaction.member.roles.cache.has(guildData.dj.role);
         const isAdmin = interaction.member.permissions.has("ManageGuild");
 
-        // Orijinal kontrol:
         if (hasDJRole || isAdmin) {
             if (player.queue.isEmpty && !client.data.get("autoplay", player.guildId)) {
-                embed.setDescription(`Sıra boş. Atlama yapılamaz.`);
+                embed.setDescription("Kuyruk bos. Atlama yapilamiyor.");
                 return interaction.reply({ embeds: [embed], flags: [MessageFlags.Ephemeral] });
             }
+
             player.skip();
-            embed.setDescription(`Şarkı atlandı.`);
+            embed.setDescription("Sarki atlandi.");
             return interaction.reply({ embeds: [embed], flags: [MessageFlags.Ephemeral] });
         }
 
-        // Voteskip mantığı
-        const voiceChannelMembers = interaction.member.voice.channel.members.filter(member => !member.user.bot);
-        const requiredVotes = Math.ceil(voiceChannelMembers.size / 2);
+        const voiceMembers = interaction.member.voice.channel.members.filter((member) => !member.user.bot);
+        const requiredVotes = Math.ceil(voiceMembers.size / 2);
 
-        // Aktif oylama varsa kontrol et
         if (player.voteskip) {
-            embed.setDescription(`Bu şarkı için zaten bir atlama oylaması devam ediyor.`);
+            embed.setDescription("Bu sarki icin zaten bir atlama oylamasi aktif.");
             return interaction.reply({ embeds: [embed], flags: [MessageFlags.Ephemeral] });
         }
 
-        // Yeni oylama başlat
         player.voteskip = {
-            votes: new Set(),
+            votes: new Set([interaction.user.id]),
+            voters: new Set([interaction.user.id]),
             required: requiredVotes,
-            voters: new Set()
         };
 
-        player.voteskip.voters.add(interaction.user.id);
-        player.voteskip.votes.add(interaction.user.id);
+        embed.setDescription(`Atlama oylamasi basladi. **${player.voteskip.votes.size}/${player.voteskip.required}** oy toplandi.`);
+        await interaction.reply({ embeds: [embed], flags: [MessageFlags.Ephemeral] });
 
-        embed.setDescription(`Şarkıyı atlamak için bir oylama başlatıldı. **${player.voteskip.votes.size}/${player.voteskip.required}** oy toplandı.`);
-        const replyMessage = await interaction.reply({ embeds: [embed], withResponse: true });
-
-        // Oylama için ayrı bir mesaj gönder ve buna tepki ekle
         const voteMessage = await interaction.channel.send({ embeds: [embed] });
-        await voteMessage.react('✅').catch(console.error);
+        await voteMessage.react("✅").catch(() => null);
 
-        // Tepki dinleyicisi oluştur
-        const filter = (reaction, user) => reaction.emoji.name === '✅' && !user.bot && interaction.member.voice.channel.members.has(user.id) && !player.voteskip.voters.has(user.id);
+        const filter = (reaction, user) =>
+            reaction.emoji.name === "✅" &&
+            !user.bot &&
+            interaction.member.voice.channel.members.has(user.id) &&
+            !player.voteskip.voters.has(user.id);
 
         const collector = voteMessage.createReactionCollector({
             filter,
-            time: 15000, // Oylama süresi (ms)
-            dispose: true // Kullanıcı tepkisini kaldırırsa oyu geri almak için (isteğe bağlı)
+            time: 15000,
+            dispose: true,
         });
 
-        collector.on('collect', (reaction, user) => {
-            if (!player.voteskip) return; // Oylama zaten bitmişse
+        collector.on("collect", async (_, user) => {
+            if (!player.voteskip) return;
 
             player.voteskip.voters.add(user.id);
             player.voteskip.votes.add(user.id);
 
-            // Oy sayısını güncelle ve mesajı düzenle
-            const updatedEmbed = new EmbedBuilder()
-                .setColor(client.config.embedColor)
-                .setDescription(`Şarkıyı atlamak için bir oylama başlatıldı. **${player.voteskip.votes.size}/${player.voteskip.required}** oy toplandı.`);
-            voteMessage.edit({ embeds: [updatedEmbed] }).catch(console.error);
+            const progressEmbed = createStatusEmbed(client, {
+                tone: "warning",
+                title: "Skip Oylamasi",
+                description: `Atlama oylamasi suruyor. **${player.voteskip.votes.size}/${player.voteskip.required}** oy toplandi.`,
+            });
 
-            // Yeterli oy toplandıysa şarkıyı atla ve oylamayı bitir
+            await voteMessage.edit({ embeds: [progressEmbed] }).catch(() => null);
+
             if (player.voteskip.votes.size >= player.voteskip.required) {
-                clearTimeout(voteTimeout); // Zaman aşımı sayacını temizle
                 player.skip();
-                const successEmbed = new EmbedBuilder()
-                    .setColor(client.config.embedColor)
-                    .setDescription(`Atlama oylaması başarılı. Şarkı atlandı.`);
-                voteMessage.edit({ embeds: [successEmbed] }).catch(console.error);
+
+                const successEmbed = createStatusEmbed(client, {
+                    tone: "success",
+                    title: "Skip Oylamasi",
+                    description: "Yeterli oy toplandi. Sarki atlandi.",
+                });
+
                 delete player.voteskip;
-                collector.stop(); // Dinleyiciyi durdur
+                collector.stop("passed");
+                await voteMessage.edit({ embeds: [successEmbed] }).catch(() => null);
+                await refreshNowPlayingMessage(client, player);
             }
         });
 
-        collector.on('end', (collected, reason) => {
-            if (reason === 'time' && player.voteskip) {
-                // Süre doldu. Oy sayısını tekrar kontrol et.
-                if (player.voteskip.votes.size >= player.voteskip.required) {
-                     const successEmbed = new EmbedBuilder()
-                        .setColor(client.config.embedColor)
-                        .setDescription(`Atlama oylaması başarılı. Şarkı atlandı.`);
-                    voteMessage.edit({ embeds: [successEmbed] }).catch(console.error);
-                    player.skip();
-                } else {
-                    const failEmbed = new EmbedBuilder()
-                        .setColor(client.config.embedColor)
-                        .setDescription(`Atlama oylaması başarısız oldu. Yeterli oy toplanamadı.`);
-                    voteMessage.edit({ embeds: [failEmbed] }).catch(console.error);
-                }
-                delete player.voteskip;
-            }
-             // Başka bir nedenden (skip başarılı oldu vs.) bittiyse zaten ilgili işlemler yapılmıştır.
-        });
+        collector.on("end", async (_, reason) => {
+            if (!player.voteskip) return;
+            if (reason === "passed") return;
 
-        // 15 saniye sonra oylamayı sonlandıracak zaman aşımı (collector 'time' ile senkronize)
-        // Bu timeout aynı zamanda collector 'end' eventi ile birlikte çalışacak.
-        const voteTimeout = setTimeout(async () => {
-             if (collector.gathering) collector.stop('time'); // Collector hala aktifse süre dolduğunu belirt
-        }, 15000);
+            const failEmbed = createStatusEmbed(client, {
+                tone: "error",
+                title: "Skip Oylamasi",
+                description: "Oylama bitti ama yeterli oy toplanamadi.",
+            });
+
+            delete player.voteskip;
+            await voteMessage.edit({ embeds: [failEmbed] }).catch(() => null);
+        });
     },
 };

@@ -1,8 +1,10 @@
-const { EmbedBuilder, MessageFlags } = require("discord.js");
+const { MessageFlags } = require("discord.js");
+const { createStatusEmbed } = require("../../../functions/createResponseEmbed.js");
+const { refreshNowPlayingMessage } = require("../../../functions/createNowPlayingCard.js");
 
 module.exports = {
     name: "resume",
-    description: "Duraklatılmış şarkıyı devam ettir",
+    description: "Duraklatilan sarkiyi devam ettir",
     category: "music",
     permissions: {
         bot: [],
@@ -15,18 +17,17 @@ module.exports = {
     },
     devOnly: false,
     run: async (client, interaction, player) => {
-        const embed = new EmbedBuilder().setColor(client.config.embedColor);
+        const embed = createStatusEmbed(client, { tone: "success", title: "Devam Et" });
 
         if (!player.paused) {
-            embed.setDescription(`Şarkı duraklatılmamış.`);
-
+            embed.setDescription("Sarki zaten oynuyor.");
             return interaction.reply({ embeds: [embed], flags: [MessageFlags.Ephemeral] });
         }
 
         player.resume();
+        await refreshNowPlayingMessage(client, player);
 
-        embed.setDescription(`Mevcut şarkı devam ettirildi.`);
-
+        embed.setDescription("Sarki tekrar oynatilmaya basladi.");
         return interaction.reply({ embeds: [embed], flags: [MessageFlags.Ephemeral] });
     },
 };

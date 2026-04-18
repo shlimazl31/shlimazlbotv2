@@ -1,6 +1,4 @@
 const { EmbedBuilder } = require("discord.js");
-const { createPage } = require("../../../functions/createPage.js");
-const lodash = require("lodash");
 
 module.exports = {
     name: "lavalink",
@@ -23,6 +21,7 @@ module.exports = {
 
         try {
             const nodes = client.rainlink.nodes.all();
+            const players = client.rainlink.players.values;
 
             if (!nodes || nodes.length === 0) {
                 embed.setDescription(`No lavalink nodes found.`);
@@ -32,14 +31,15 @@ module.exports = {
 
             const nodeInfo = nodes.map((node) => {
                 const online = node.online ? "Online" : "Offline";
-                const { players, playingPlayers: playing, uptime, memory, cpu } = node.stats;
+                const statsPlayers = players.filter((activePlayer) => activePlayer.node?.options?.name === node.options.name);
+                const playing = statsPlayers.filter((activePlayer) => activePlayer.playing).length;
+                const { uptime, memory, cpu } = node.stats;
                 const formattedUptime = ms(uptime, { compact: true });
 
                 const nodeInfo = {
                     name: node.options.name,
                     host: node.options.host,
                     port: node.options.port,
-                    auth: node.options.auth,
                     secure: node.options.secure,
                     driver: node.options.driver,
                 };
@@ -57,12 +57,11 @@ module.exports = {
                     lavalinkLoad: (cpu.lavalinkLoad * 100).toFixed(2),
                 };
 
-                return formatNodeInfo(nodeInfo, online, players, playing, formattedUptime, memoryInfo, cpuInfo);
+                return formatNodeInfo(nodeInfo, online, statsPlayers.length, playing, formattedUptime, memoryInfo, cpuInfo);
             });
+            embed.setDescription(nodeInfo.join("\n"));
 
-            const pages = lodash.chunk(nodeInfo, 1).map((s) => s.join(""));
-
-            return createPage(client, message, embed, pages);
+            return message.reply({ embeds: [embed] });
         } catch (error) {
             console.error(error);
             embed.setDescription(`An error occurred while fetching the Lavalink node information.`);
@@ -78,7 +77,6 @@ function formatNodeInfo(nodeInfo, online, players, playing, formattedUptime, mem
   - Name: ${nodeInfo.name}
   - Host: ${nodeInfo.host}
   - Port: ${nodeInfo.port}
-  - Auth: ${nodeInfo.auth}
   - Secure: ${nodeInfo.secure}
   - Driver: ${nodeInfo.driver}
   

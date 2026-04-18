@@ -1,5 +1,6 @@
-const { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, InteractionType, MessageFlags } = require("discord.js");
+const { EmbedBuilder, InteractionType, MessageFlags } = require("discord.js");
 const { createDataGuild, createDataUser } = require("../../../functions/createData.js");
+const createSupportComponents = require("../../../functions/createSupportComponents.js");
 const { permissions } = require("../../../functions/getPermission.js");
 
 module.exports = async (client, interaction) => {
@@ -10,11 +11,8 @@ module.exports = async (client, interaction) => {
 
     const userData = client.data.get(`userData_${interaction.user.id}`);
     const embed = new EmbedBuilder().setColor(client.config.embedColor);
-    const row = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setLabel("Support Server").setURL(client.config.supportServerUrl).setStyle(ButtonStyle.Link),
-    );
+    const components = createSupportComponents(client.config.supportServerUrl);
 
-    // Buton etkileşimlerini işle
     if (interaction.isButton()) {
         require("../interaction/buttonInteraction")(client, interaction);
         return;
@@ -24,15 +22,14 @@ module.exports = async (client, interaction) => {
         const command = client.slash.get(interaction.commandName);
         if (!command) return;
 
-        // Komut log kanalına gönder
-        const logChannel = await client.channels.cache.get("1373773051749072916");
+        const logChannel = client.channels.cache.get("1373773051749072916");
         if (logChannel) {
             const logEmbed = new EmbedBuilder()
                 .setColor(client.config.embedColor)
-                .setTitle("Komut Kullanıldı")
-                .setDescription(`**Komut:** ${command.name}\n**Kullanıcı:** ${interaction.user.tag} (${interaction.user.id})\n**Sunucu:** ${interaction.guild.name} (${interaction.guildId})`)
+                .setTitle("Komut Kullanildi")
+                .setDescription(`**Komut:** ${command.name}\n**Kullanici:** ${interaction.user.tag} (${interaction.user.id})\n**Sunucu:** ${interaction.guild.name} (${interaction.guildId})`)
                 .setTimestamp();
-            
+
             logChannel.send({ embeds: [logEmbed] });
         }
 
@@ -48,36 +45,26 @@ module.exports = async (client, interaction) => {
         }
 
         if (botMissingPermissions.length > 0) {
-            const content = `The bot doesn't have one of these permissions \`${botMissingPermissions.join(", ")}\`.\nPlease double check them in your server role & channel settings.`;
+            embed.setDescription(
+                `The bot doesn't have one of these permissions \`${botMissingPermissions.join(", ")}\`.\nPlease double check them in your server role & channel settings.`,
+            );
 
-            return interaction.reply({ content: content, components: [row], flags: [MessageFlags.Ephemeral] });
+            return interaction.reply({ embeds: [embed], components, flags: [MessageFlags.Ephemeral] });
         }
 
         if (userData && userData.ban.status) {
             embed.setDescription(`You have been banned from using the bot.\n\`\`\`${userData.ban.reason}\`\`\``);
-
-            return interaction.reply({ embeds: [embed], components: [row], flags: [MessageFlags.Ephemeral] });
+            return interaction.reply({ embeds: [embed], components, flags: [MessageFlags.Ephemeral] });
         }
 
         const maintenance = client.data.get("maintenance");
 
         if (maintenance && !client.config.dev.includes(interaction.user.id)) {
-            embed.setDescription(`The bot is currently under maintenance. Please try again later.`);
-
-            return interaction.reply({ embeds: [embed], components: [row], flags: [MessageFlags.Ephemeral] });
+            embed.setDescription("The bot is currently under maintenance. Please try again later.");
+            return interaction.reply({ embeds: [embed], components, flags: [MessageFlags.Ephemeral] });
         }
 
-        let player = client.rainlink.players.get(interaction.guildId);
-
+        const player = client.rainlink.players.get(interaction.guildId);
         return permissions(client, interaction, command, embed, player);
     }
 };
-
-/**
- * Project: Lunox
- * Author: adh319
- * Company: EnourDev
- * This code is the property of EnourDev and may not be reproduced or
- * modified without permission. For more information, contact us at
- * https://discord.gg/xhTVzbS5NU
- */

@@ -1,19 +1,21 @@
-const { EmbedBuilder, MessageFlags } = require("discord.js");
+const { MessageFlags } = require("discord.js");
+const { createStatusEmbed } = require("../../../functions/createResponseEmbed.js");
+const { refreshNowPlayingMessage } = require("../../../functions/createNowPlayingCard.js");
 
 module.exports = {
     name: "loop",
-    description: "Döngü modunu değiştir",
+    description: "Dongu modunu degistir",
     category: "music",
     options: [
         {
             name: "mode",
-            description: "Döngü modunu ayarla",
+            description: "Dongu modunu ayarla",
             type: 3,
             required: true,
             choices: [
-                { name: "kapalı", value: "none" },
-                { name: "şarkı", value: "song" },
-                { name: "sıra", value: "queue" },
+                { name: "kapali", value: "none" },
+                { name: "sarki", value: "song" },
+                { name: "kuyruk", value: "queue" },
             ],
         },
     ],
@@ -28,22 +30,15 @@ module.exports = {
     },
     devOnly: false,
     run: async (client, interaction, player) => {
-        const embed = new EmbedBuilder().setColor(client.config.embedColor);
+        const embed = createStatusEmbed(client, { tone: "info", title: "Dongu" });
         const mode = interaction.options.getString("mode");
 
-        switch (mode) {
-            case "none":
-                embed.setDescription(`Döngü modu \`kapalı\` olarak ayarlandı.`);
-                break;
-            case "song":
-                embed.setDescription(`Döngü modu \`şarkı\` olarak ayarlandı.`);
-                break;
-            case "queue":
-                embed.setDescription(`Döngü modu \`sıra\` olarak ayarlandı.`);
-                break;
-        }
+        if (mode === "none") embed.setDescription("Dongu modu `kapali` olarak ayarlandi.");
+        if (mode === "song") embed.setDescription("Dongu modu `sarki` olarak ayarlandi.");
+        if (mode === "queue") embed.setDescription("Dongu modu `kuyruk` olarak ayarlandi.");
 
         player.setLoop(mode);
+        await refreshNowPlayingMessage(client, player);
 
         return interaction.reply({ embeds: [embed], flags: [MessageFlags.Ephemeral] });
     },

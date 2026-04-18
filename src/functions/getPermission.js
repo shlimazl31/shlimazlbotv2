@@ -98,6 +98,20 @@ module.exports = {
             await command.run(client, response, player, args);
         } catch (error) {
             console.error(error);
+
+            embed.setDescription("Komut calistirilirken bir hata olustu. Lutfen daha sonra tekrar deneyin.");
+
+            if (response.deferred) {
+                return response.editReply({ embeds: [embed], components: [] }).catch(() => null);
+            }
+
+            if (response.replied) {
+                return response.followUp({ embeds: [embed], flags: [MessageFlags.Ephemeral] }).catch(() => null);
+            }
+
+            if (typeof response.reply === "function") {
+                return response.reply({ embeds: [embed], flags: [MessageFlags.Ephemeral] }).catch(() => null);
+            }
         }
     },
 };

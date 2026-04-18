@@ -1,9 +1,10 @@
-const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require("discord.js");
 const { readdirSync } = require("fs");
+const createSupportComponents = require("../../../functions/createSupportComponents.js");
+const { createBaseEmbed } = require("../../../functions/createResponseEmbed.js");
 
 module.exports = {
     name: "help",
-    description: "Komut listesini göster",
+    description: "Komut listesini goster",
     category: "general",
     permissions: {
         bot: [],
@@ -15,51 +16,51 @@ module.exports = {
         current: false,
     },
     devOnly: false,
-    run: async (client, interaction, player) => {
-        const embed = new EmbedBuilder().setColor(client.config.embedColor);
+    run: async (client, interaction) => {
         const categories = readdirSync("./src/commands/interaction/");
-
-        const categoryPromises = categories.map(async (category) => {
-            const commands = client.slash.filter((c) => c.category === category);
-
-            if (commands.size === 0) return null;
-
-            const slashCommandData = await Promise.all(
-                commands.map(async (c) => {
-                    return `\`${c.name}\``;
-                }),
-            );
-
-            const categoryNames = { general: "Genel", music: "Müzik", setting: "Ayarlar", film: "Film" };
-            const categoryName = categoryNames[category] || null;
-
-            return embed.addFields({ name: `\`❯\`  ${toOppositeCase(categoryName)}`, value: `${slashCommandData.join(", ")}` });
+        const quickStart = ["`/play` ile sarki baslat", "`/queue` ile sirayi gor", "`/help` ile kategorileri gez"];
+        const embed = createBaseEmbed(client, {
+            color: 0x5865f2,
+            author: {
+                name: `${client.user.username} | Komut Merkezi`,
+                iconURL: client.user.displayAvatarURL(),
+            },
+            thumbnail: client.user.displayAvatarURL(),
+            description: [
+                `Hos geldin **${interaction.member}**.`,
+                "Komutlari daha hizli bulman icin kategorileri tek kartta topladim.",
+                "",
+                "**Hizli Baslangic**",
+                quickStart.join("  |  "),
+            ].join("\n"),
+            fields: [
+                {
+                    name: "Bot Ozet",
+                    value: `\`${client.slash.size}\` slash komutu  |  \`${categories.length}\` kategori  |  Muzik odakli hizli akis`,
+                    inline: false,
+                },
+            ],
+            footer: {
+                text: `Toplam komut: ${client.slash.size}`,
+                iconURL: client.user.displayAvatarURL({ dynamic: true }),
+            },
         });
 
-        const results = await Promise.all(categoryPromises);
-        results.filter(result => result !== null);
+        for (const category of categories) {
+            const commands = client.slash.filter((command) => command.category === category);
+            if (commands.size === 0) continue;
 
-        embed
-            .setAuthor({ name: `${client.user.username} Yardım`, iconURL: client.user.displayAvatarURL() })
-            .setThumbnail(client.user.displayAvatarURL())
-            .setDescription(
-                `Merhaba **${interaction.member}**, ben **${client.user}**. Yüksek Kaliteli bir Discord Müzik Botuyum. Spotify, SoundCloud, Apple Music ve diğer platformları destekliyorum. Aşağıdaki komutları kullanarak neler yapabileceğimi öğrenebilirsin:`,
-            )
-            .setFooter({
-                text: `© ${client.user.username} | Toplam Komut: ${client.slash.size}`,
-                iconURL: client.user.displayAvatarURL({ dynamic: true }),
-            })
-            .setTimestamp();
+            const categoryNames = { general: "Genel", music: "Muzik", setting: "Ayarlar", film: "Film" };
+            const title = categoryNames[category] || "Diger";
+            const value = commands
+                .map((command) => `\`/${command.name}\``)
+                .join("  |  ");
 
-        const row = new ActionRowBuilder().addComponents(
-            new ButtonBuilder().setLabel("Destek Sunucusu").setURL(client.config.supportServerUrl).setStyle(ButtonStyle.Link),
-        );
+            embed.addFields({ name: title, value });
+        }
 
-        return interaction.reply({ embeds: [embed], components: [row] });
+        const components = createSupportComponents(client.config.supportServerUrl, "Destek Sunucusu");
+
+        return interaction.reply({ embeds: [embed], components });
     },
 };
-
-function toOppositeCase(char) {
-    if (!char) return "Diğer";
-    return char.charAt(0).toUpperCase() + char.slice(1).toLowerCase();
-}

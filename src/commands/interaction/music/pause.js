@@ -1,8 +1,10 @@
-const { EmbedBuilder, MessageFlags } = require("discord.js");
+const { MessageFlags } = require("discord.js");
+const { createStatusEmbed } = require("../../../functions/createResponseEmbed.js");
+const { refreshNowPlayingMessage } = require("../../../functions/createNowPlayingCard.js");
 
 module.exports = {
     name: "pause",
-    description: "Mevcut şarkıyı duraklat",
+    description: "Mevcut sarkiyi duraklat",
     category: "music",
     permissions: {
         bot: [],
@@ -15,18 +17,17 @@ module.exports = {
     },
     devOnly: false,
     run: async (client, interaction, player) => {
-        const embed = new EmbedBuilder().setColor(client.config.embedColor);
+        const embed = createStatusEmbed(client, { tone: "info", title: "Duraklat" });
 
         if (player.paused) {
-            embed.setDescription(`Zaten duraklatılmış.`);
-
+            embed.setDescription("Sarki zaten duraklatilmis durumda.");
             return interaction.reply({ embeds: [embed], flags: [MessageFlags.Ephemeral] });
         }
 
         player.pause();
+        await refreshNowPlayingMessage(client, player);
 
-        embed.setDescription(`Mevcut şarkı duraklatıldı.`);
-
+        embed.setDescription("Mevcut sarki duraklatildi.");
         return interaction.reply({ embeds: [embed], flags: [MessageFlags.Ephemeral] });
     },
 };

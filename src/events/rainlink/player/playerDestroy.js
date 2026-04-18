@@ -1,3 +1,6 @@
+const getBestLavalinkNode = require("../../../functions/getBestLavalinkNode.js");
+const { stopNowPlayingRefresh } = require("../../../functions/createNowPlayingCard.js");
+
 module.exports = async (client, player) => {
     if (!player) return;
 
@@ -5,6 +8,7 @@ module.exports = async (client, player) => {
     if (!guild) return;
 
     console.debug(`[DEBUG] Player destroyed from [${guild.name}] (${guild.id})`);
+    stopNowPlayingRefresh(client, guild.id);
 
     if (player.message) player.message.delete().catch((e) => {});
 
@@ -22,12 +26,15 @@ module.exports = async (client, player) => {
             return;
         }
 
+        const nodeName = await getBestLavalinkNode(client);
+
         return await client.rainlink.create({
             guildId: guild.id,
             voiceId: voice.id,
             textId: text.id,
             shardId: guild.shardId,
             volume: client.config.defaultVolume,
+            ...(nodeName && { nodeName }),
             deaf: true,
         });
     }

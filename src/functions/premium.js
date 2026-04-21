@@ -22,6 +22,7 @@ const PREMIUM_FEATURES = {
     WEB_DASHBOARD: "web_dashboard",
     ANALYTICS: "analytics",
     SAVED_PLAYLISTS: "saved_playlists",
+    SLEEP_TIMER: "sleep_timer",
     ADVANCED_QUEUE: "advanced_queue",
     AUDIO_FILTERS: "audio_filters",
     AUTOPLAY: "autoplay",
@@ -38,6 +39,7 @@ const FEATURE_LABELS = {
     [PREMIUM_FEATURES.WEB_DASHBOARD]: "Web Dashboard",
     [PREMIUM_FEATURES.ANALYTICS]: "Sunucu Analitikleri",
     [PREMIUM_FEATURES.SAVED_PLAYLISTS]: "Kayıtlı Çalma Listeleri",
+    [PREMIUM_FEATURES.SLEEP_TIMER]: "Uyku Zamanlayıcı",
     [PREMIUM_FEATURES.ADVANCED_QUEUE]: "Gelişmiş Kuyruk",
     [PREMIUM_FEATURES.AUDIO_FILTERS]: "Ses Filtreleri",
     [PREMIUM_FEATURES.AUTOPLAY]: "Otomatik Oynatma",
@@ -119,6 +121,8 @@ const COMMAND_PLAN_REQUIREMENTS = {
     clear: PLAN_TYPES.PRO,
     remove: PLAN_TYPES.PRO,
     previous: PLAN_TYPES.PRO,
+    playlist: PLAN_TYPES.PRO,
+    sleeptimer: PLAN_TYPES.PRO,
 };
 
 const PLAN_FEATURES = {
@@ -195,6 +199,10 @@ function normalizeFeature(feature) {
         badge: PREMIUM_FEATURES.PRO_BADGE,
         pro_badge: PREMIUM_FEATURES.PRO_BADGE,
         dashboard_controls: PREMIUM_FEATURES.DASHBOARD_ADVANCED_CONTROLS,
+        playlist: PREMIUM_FEATURES.SAVED_PLAYLISTS,
+        playlists: PREMIUM_FEATURES.SAVED_PLAYLISTS,
+        sleeptimer: PREMIUM_FEATURES.SLEEP_TIMER,
+        sleep_timer: PREMIUM_FEATURES.SLEEP_TIMER,
     };
 
     return aliases[normalized] || normalized;

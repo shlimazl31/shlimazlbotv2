@@ -63,6 +63,42 @@ const createUser = mongoose.Schema({
             updatedAt: { type: Date, default: null },
         },
     },
+    playlists: {
+        type: [
+            {
+                name: { type: String, required: true },
+                tracks: {
+                    type: [
+                        {
+                            title: { type: String, default: "Unknown" },
+                            author: { type: String, default: "Unknown" },
+                            uri: { type: String, default: null },
+                            duration: { type: Number, default: 0 },
+                            artworkUrl: { type: String, default: null },
+                            addedAt: { type: Date, default: Date.now },
+                        },
+                    ],
+                    default: [],
+                },
+                createdAt: { type: Date, default: Date.now },
+                updatedAt: { type: Date, default: Date.now },
+            },
+        ],
+        default: [],
+    },
+    likedSongs: {
+        type: [
+            {
+                title: { type: String, default: "Unknown" },
+                author: { type: String, default: "Unknown" },
+                uri: { type: String, default: null },
+                duration: { type: Number, default: 0 },
+                artworkUrl: { type: String, default: null },
+                likedAt: { type: Date, default: Date.now },
+            },
+        ],
+        default: [],
+    },
 });
 
 module.exports = mongoose.model("user", createUser);

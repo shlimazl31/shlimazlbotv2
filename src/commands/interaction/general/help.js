@@ -85,6 +85,7 @@ function buildGroupedCommands(client, userId) {
     const groupedCommands = {};
 
     for (const command of client.slash.values()) {
+        if (command.name === "health") continue;
         if (command.devOnly && !client.config.dev.includes(userId)) continue;
         if (!groupedCommands[command.category]) groupedCommands[command.category] = [];
         groupedCommands[command.category].push(command);
@@ -126,7 +127,7 @@ function createOverviewEmbed(client, interaction, groupedCommands) {
             {
                 name: t(client, interaction.guildId, "help.overviewName"),
                 value: t(client, interaction.guildId, "help.overviewValue", {
-                    commands: client.slash.size,
+                    commands: Object.values(groupedCommands).reduce((total, commands) => total + commands.length, 0),
                     categories: categories.length,
                 }),
                 inline: false,

@@ -22,9 +22,16 @@ module.exports = (client) => {
         });
 
         client.on("clientReady", async () => {
-            await client.application.commands.set(data);
+            try {
+                const clusterId = client.cluster?.id ?? 0;
+                if (clusterId === 0) {
+                    await client.application.commands.set(data);
+                }
 
-            console.log(`[INFO] ${client.slash.size} Slash commands loaded`);
+                console.log(`[INFO] ${client.slash.size} Slash commands loaded`);
+            } catch (error) {
+                console.error("[ERROR] Slash command sync failed:", error);
+            }
         });
     } catch (error) {
         console.error(error);

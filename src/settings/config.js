@@ -115,6 +115,7 @@ module.exports = {
     mongoUri: process.env.MONGO_URI || "",
     geniusApiKey: process.env.GENIUS_API_KEY || "",
     supportServerUrl: process.env.SUPPORT_SERVER_URL || "https://discord.gg/WPNHxA7PFq",
+    commandLogChannelId: process.env.COMMAND_LOG_CHANNEL_ID || "1373773051749072916",
 
     lavalinkSource: process.env.LAVALINK_SOURCE || "youtube",
     rainlinkOptions: {

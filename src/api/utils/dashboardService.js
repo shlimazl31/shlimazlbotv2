@@ -305,7 +305,21 @@ async function getDashboardGuild(cluster, userId, guildId) {
                         enabled: Boolean(settings.miniPlayer?.enabled),
                         channelId: settings.miniPlayer?.channelId || null,
                     },
+                    playlist: {
+                        enabled: settings.playlist?.enabled !== false,
+                        maxPlaylists: clampNumber(settings.playlist?.maxPlaylists, 1, 50, 10),
+                    },
+                    sleepTimer: {
+                        enabled: settings.sleepTimer?.enabled !== false,
+                        maxMinutes: clampNumber(settings.sleepTimer?.maxMinutes, 1, 1440, 240),
+                    },
                 };
+            }
+
+            function clampNumber(value, min, max, fallback) {
+                const number = Number(value);
+                if (!Number.isFinite(number)) return fallback;
+                return Math.min(Math.max(Math.trunc(number), min), max);
             }
 
             function normalizeDj(dj = {}) {
@@ -422,6 +436,14 @@ async function updateDashboardGuildSettings(cluster, userId, guildId, patch) {
 
             if (context.patch.reconnectEnabled === true && !features.includes("247_mode")) {
                 return { ok: false, status: 402, error: "24/7 modu bu hesapta premium gerektirir." };
+            }
+
+            if (context.patch.playlistEnabled === true && !features.includes("saved_playlists")) {
+                return { ok: false, status: 402, error: "Playlist sistemi bu hesapta Pro gerektirir." };
+            }
+
+            if (context.patch.sleepTimerEnabled === true && !features.includes("sleep_timer")) {
+                return { ok: false, status: 402, error: "Sleep timer bu hesapta Pro gerektirir." };
             }
 
             if (Object.prototype.hasOwnProperty.call(context.patch, "musicChannelId")) {
@@ -544,6 +566,22 @@ async function updateDashboardGuildSettings(cluster, userId, guildId, patch) {
                 return { ok: false, status: 400, error: "24/7 modu aÃ§Ä±kken metin ve ses kanalÄ± seÃ§melisin." };
             }
 
+            if (Object.prototype.hasOwnProperty.call(context.patch, "playlistEnabled")) {
+                settings.playlist.enabled = Boolean(context.patch.playlistEnabled);
+            }
+
+            if (Object.prototype.hasOwnProperty.call(context.patch, "playlistMaxPlaylists")) {
+                settings.playlist.maxPlaylists = clampNumber(context.patch.playlistMaxPlaylists, 1, 50, 10);
+            }
+
+            if (Object.prototype.hasOwnProperty.call(context.patch, "sleepTimerEnabled")) {
+                settings.sleepTimer.enabled = Boolean(context.patch.sleepTimerEnabled);
+            }
+
+            if (Object.prototype.hasOwnProperty.call(context.patch, "sleepTimerMaxMinutes")) {
+                settings.sleepTimer.maxMinutes = clampNumber(context.patch.sleepTimerMaxMinutes, 1, 1440, 240);
+            }
+
             const settingsPatch = { ...context.patch };
             delete settingsPatch.musicChannelId;
             delete settingsPatch.djRoleId;
@@ -553,6 +591,10 @@ async function updateDashboardGuildSettings(cluster, userId, guildId, patch) {
             delete settingsPatch.reconnectEnabled;
             delete settingsPatch.reconnectTextChannelId;
             delete settingsPatch.reconnectVoiceChannelId;
+            delete settingsPatch.playlistEnabled;
+            delete settingsPatch.playlistMaxPlaylists;
+            delete settingsPatch.sleepTimerEnabled;
+            delete settingsPatch.sleepTimerMaxMinutes;
             Object.assign(settings, settingsPatch);
             await client.guildData.findOneAndUpdate(
                 { id: context.guildId },
@@ -590,7 +632,21 @@ async function updateDashboardGuildSettings(cluster, userId, guildId, patch) {
                         channelId: settings.miniPlayer?.channelId || null,
                         messageId: settings.miniPlayer?.messageId || null,
                     },
+                    playlist: {
+                        enabled: settings.playlist?.enabled !== false,
+                        maxPlaylists: clampNumber(settings.playlist?.maxPlaylists, 1, 50, 10),
+                    },
+                    sleepTimer: {
+                        enabled: settings.sleepTimer?.enabled !== false,
+                        maxMinutes: clampNumber(settings.sleepTimer?.maxMinutes, 1, 1440, 240),
+                    },
                 };
+            }
+
+            function clampNumber(value, min, max, fallback) {
+                const number = Number(value);
+                if (!Number.isFinite(number)) return fallback;
+                return Math.min(Math.max(Math.trunc(number), min), max);
             }
 
             function normalizeDj(dj = {}) {
@@ -655,6 +711,14 @@ function sanitizeSettingsPatch(body) {
     if (typeof body.reconnectTextChannelId === "string" && /^\d{15,25}$/.test(body.reconnectTextChannelId)) patch.reconnectTextChannelId = body.reconnectTextChannelId;
     if (body.reconnectVoiceChannelId === null || body.reconnectVoiceChannelId === "") patch.reconnectVoiceChannelId = null;
     if (typeof body.reconnectVoiceChannelId === "string" && /^\d{15,25}$/.test(body.reconnectVoiceChannelId)) patch.reconnectVoiceChannelId = body.reconnectVoiceChannelId;
+    if (typeof body.playlistEnabled === "boolean") patch.playlistEnabled = body.playlistEnabled;
+    if (Number.isFinite(Number(body.playlistMaxPlaylists))) {
+        patch.playlistMaxPlaylists = Math.min(Math.max(Math.trunc(Number(body.playlistMaxPlaylists)), 1), 50);
+    }
+    if (typeof body.sleepTimerEnabled === "boolean") patch.sleepTimerEnabled = body.sleepTimerEnabled;
+    if (Number.isFinite(Number(body.sleepTimerMaxMinutes))) {
+        patch.sleepTimerMaxMinutes = Math.min(Math.max(Math.trunc(Number(body.sleepTimerMaxMinutes)), 1), 1440);
+    }
 
     return patch;
 }

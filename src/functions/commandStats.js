@@ -1,4 +1,5 @@
 const MAX_RECENT_COMMANDS = 25;
+const COMMAND_DB_LOGS_ENABLED = String(process.env.COMMAND_DB_LOGS || "").trim().toLowerCase() === "true";
 
 function createEmptyStats() {
     return {
@@ -32,7 +33,7 @@ function recordCommandUsage(client, data = {}) {
     stats.recent = stats.recent.slice(0, MAX_RECENT_COMMANDS);
 
     client.data.set("commandStats", stats);
-    if (client.adminLog?.create) {
+    if (COMMAND_DB_LOGS_ENABLED && client.adminLog?.create) {
         client.adminLog.create({
             action: `command.${type}`,
             actor: data.userId || null,

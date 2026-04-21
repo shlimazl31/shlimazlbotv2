@@ -10,6 +10,14 @@ const DEFAULT_GUILD_SETTINGS = {
         channelId: null,
         messageId: null,
     },
+    playlist: {
+        enabled: true,
+        maxPlaylists: 10,
+    },
+    sleepTimer: {
+        enabled: true,
+        maxMinutes: 240,
+    },
 };
 
 function getGuildData(client, guildId) {
@@ -19,6 +27,8 @@ function getGuildData(client, guildId) {
 function ensureGuildSettings(guildData = {}) {
     const settings = guildData.settings || {};
     const miniPlayer = settings.miniPlayer || {};
+    const playlist = settings.playlist || {};
+    const sleepTimer = settings.sleepTimer || {};
 
     guildData.settings = {
         ...DEFAULT_GUILD_SETTINGS,
@@ -28,9 +38,25 @@ function ensureGuildSettings(guildData = {}) {
             ...DEFAULT_GUILD_SETTINGS.miniPlayer,
             ...miniPlayer,
         },
+        playlist: {
+            ...DEFAULT_GUILD_SETTINGS.playlist,
+            ...playlist,
+            maxPlaylists: clampNumber(playlist.maxPlaylists, 1, 50, DEFAULT_GUILD_SETTINGS.playlist.maxPlaylists),
+        },
+        sleepTimer: {
+            ...DEFAULT_GUILD_SETTINGS.sleepTimer,
+            ...sleepTimer,
+            maxMinutes: clampNumber(sleepTimer.maxMinutes, 1, 1440, DEFAULT_GUILD_SETTINGS.sleepTimer.maxMinutes),
+        },
     };
 
     return guildData.settings;
+}
+
+function clampNumber(value, min, max, fallback) {
+    const number = Number(value);
+    if (!Number.isFinite(number)) return fallback;
+    return Math.min(Math.max(Math.trunc(number), min), max);
 }
 
 function getGuildSettings(client, guildId) {
@@ -62,10 +88,11 @@ function normalizeHexColor(value) {
 
 async function persistGuildData(client, guildId, guildData) {
     const settings = ensureGuildSettings(guildData);
+    const { __cachedAt, ...persistedGuildData } = guildData;
 
     client.data.set(`guildData_${guildId}`, guildData);
     client.data.set(`guildSettings_${guildId}`, settings);
-    await client.guildData.findOneAndUpdate({ id: guildId }, { $set: guildData }, { upsert: true, new: true });
+    await client.guildData.findOneAndUpdate({ id: guildId }, { $set: persistedGuildData }, { upsert: true, new: true });
 }
 
 function isMusicCommand(command) {

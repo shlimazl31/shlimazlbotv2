@@ -29,7 +29,32 @@ module.exports = {
     run: async (client, interaction, player) => {
         const minutes = interaction.options.getInteger("minutes");
         const guildId = interaction.guildId;
+        const timerSettings = getSleepTimerSettings(client, guildId);
         const existingTimer = client.sleepTimers?.get(guildId);
+
+        if (!timerSettings.enabled) {
+            return interaction.reply({
+                embeds: [createStatusEmbed(client, {
+                    tone: "warning",
+                    title: "Uyku Zamanlayıcı",
+                    guildId,
+                    description: "Sleep timer bu sunucuda dashboard üzerinden kapatılmış.",
+                })],
+                flags: [MessageFlags.Ephemeral],
+            });
+        }
+
+        if (minutes > timerSettings.maxMinutes) {
+            return interaction.reply({
+                embeds: [createStatusEmbed(client, {
+                    tone: "warning",
+                    title: "Uyku Zamanlayıcı",
+                    guildId,
+                    description: `Bu sunucuda sleep timer limiti en fazla **${timerSettings.maxMinutes} dakika**.`,
+                })],
+                flags: [MessageFlags.Ephemeral],
+            });
+        }
 
         if (!client.sleepTimers) client.sleepTimers = new Map();
         if (existingTimer) clearTimeout(existingTimer.timeout);
@@ -71,3 +96,14 @@ module.exports = {
         return interaction.reply({ embeds: [embed], flags: [MessageFlags.Ephemeral] });
     },
 };
+
+function getSleepTimerSettings(client, guildId) {
+    const guildData = client.data.get(`guildData_${guildId}`) || {};
+    const settings = guildData.settings?.sleepTimer || {};
+    const maxMinutes = Number(settings.maxMinutes);
+
+    return {
+        enabled: settings.enabled !== false,
+        maxMinutes: Number.isFinite(maxMinutes) ? Math.min(Math.max(Math.trunc(maxMinutes), 1), 1440) : 240,
+    };
+}

@@ -24,7 +24,7 @@ module.exports = async (client, interaction) => {
         const command = client.slash.get(interaction.commandName);
         if (!command) return;
 
-        const logChannel = client.channels.cache.get("1373773051749072916");
+        const logChannel = client.config.commandLogChannelId ? client.channels.cache.get(client.config.commandLogChannelId) : null;
         if (logChannel) {
             const logEmbed = new EmbedBuilder()
                 .setColor(client.config.embedColor)
@@ -32,7 +32,7 @@ module.exports = async (client, interaction) => {
                 .setDescription(`**Komut:** ${command.name}\n**Kullanici:** ${interaction.user.tag} (${interaction.user.id})\n**Sunucu:** ${interaction.guild.name} (${interaction.guildId})`)
                 .setTimestamp();
 
-            logChannel.send({ embeds: [logEmbed] });
+            logChannel.send({ embeds: [logEmbed] }).catch(() => {});
         }
 
         console.log(
@@ -101,6 +101,7 @@ function checkCommandCooldown(client, interaction, command) {
     if (!cooldownMs) return { blocked: false, seconds: 0 };
 
     if (!client.commandCooldowns) client.commandCooldowns = new Map();
+    ensureCooldownSweeper(client);
 
     const key = `${interaction.user.id}:${command.name}`;
     const now = Date.now();
@@ -111,7 +112,18 @@ function checkCommandCooldown(client, interaction, command) {
     }
 
     client.commandCooldowns.set(key, now + cooldownMs);
-    setTimeout(() => client.commandCooldowns?.delete(key), cooldownMs + 1000).unref?.();
 
     return { blocked: false, seconds: 0 };
+}
+
+function ensureCooldownSweeper(client) {
+    if (client.commandCooldownSweeper) return;
+
+    client.commandCooldownSweeper = setInterval(() => {
+        const now = Date.now();
+        for (const [key, expiresAt] of client.commandCooldowns || []) {
+            if (expiresAt <= now) client.commandCooldowns.delete(key);
+        }
+    }, 60 * 1000);
+    client.commandCooldownSweeper.unref?.();
 }

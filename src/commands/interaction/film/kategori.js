@@ -1,39 +1,40 @@
 const { EmbedBuilder, MessageFlags } = require("discord.js");
 const fetch = require("node-fetch");
-const { getGuildSettings } = require("../../../functions/guildSettings.js");
 const { t } = require("../../../functions/t.js");
 
+const MOVIE_GENRES = [
+    { name: "Action", value: "28" },
+    { name: "Adventure", value: "12" },
+    { name: "Animation", value: "16" },
+    { name: "Comedy", value: "35" },
+    { name: "Crime", value: "80" },
+    { name: "Documentary", value: "99" },
+    { name: "Drama", value: "18" },
+    { name: "Family", value: "10751" },
+    { name: "Fantasy", value: "14" },
+    { name: "History", value: "36" },
+    { name: "Horror", value: "27" },
+    { name: "Music", value: "10402" },
+    { name: "Mystery", value: "9648" },
+    { name: "Romance", value: "10749" },
+    { name: "Science Fiction", value: "878" },
+    { name: "TV Movie", value: "10770" },
+    { name: "Thriller", value: "53" },
+    { name: "War", value: "10752" },
+    { name: "Western", value: "37" },
+];
+
 module.exports = {
-    name: "filmkategori",
-    description: "Kategoriye göre film ara",
+    name: "movie-category",
+    description: "Browse movies by category.",
     category: "film",
     options: [
         {
-            name: "tur",
-            description: "Film turu",
+            name: "genre",
+            description: "Movie genre",
             type: 3,
             required: true,
-            choices: [
-                { name: "Aksiyon", value: "28" },
-                { name: "Macera", value: "12" },
-                { name: "Animasyon", value: "16" },
-                { name: "Komedi", value: "35" },
-                { name: "Suc", value: "80" },
-                { name: "Belgesel", value: "99" },
-                { name: "Dram", value: "18" },
-                { name: "Aile", value: "10751" },
-                { name: "Fantastik", value: "14" },
-                { name: "Tarih", value: "36" },
-                { name: "Korku", value: "27" },
-                { name: "Müzik", value: "10402" },
-                { name: "Gizem", value: "9648" },
-                { name: "Romantik", value: "10749" },
-                { name: "Bilim Kurgu", value: "878" },
-                { name: "TV Film", value: "10770" },
-                { name: "Gerilim", value: "53" },
-                { name: "Savas", value: "10752" },
-                { name: "Western", value: "37" },
-            ],
+            choices: MOVIE_GENRES,
         },
     ],
     permissions: {
@@ -49,7 +50,7 @@ module.exports = {
     run: async (client, interaction) => {
         const guildId = interaction.guildId;
         const embed = new EmbedBuilder().setColor(client.config.embedColor);
-        const genreId = interaction.options.getString("tur");
+        const genreId = interaction.options.getString("genre");
 
         try {
             const response = await fetch(
@@ -81,6 +82,6 @@ module.exports = {
     },
 };
 
-function getMovieLanguage(client, guildId) {
-    return getGuildSettings(client, guildId).language === "en" ? "en-US" : "tr-TR";
+function getMovieLanguage() {
+    return "en-US";
 }

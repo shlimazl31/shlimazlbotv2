@@ -94,6 +94,7 @@ module.exports = async (client, message) => {
 async function recordDirectMessage(client, message) {
     try {
         await createDataUser(client, message.author);
+        const content = String(message.content || "").slice(0, 1800);
         await client.adminLog.create({
             action: "dm.inbound",
             actor: message.author.id,
@@ -106,8 +107,8 @@ async function recordDirectMessage(client, message) {
                 username: message.author.username,
                 globalName: message.author.globalName || message.author.username,
                 avatar: message.author.avatar || null,
-                content: message.content || "",
-                preview: (message.content || "").slice(0, 300),
+                content,
+                preview: content.slice(0, 300),
                 attachmentCount: message.attachments?.size || 0,
             },
         });

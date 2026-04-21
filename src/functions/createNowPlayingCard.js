@@ -200,6 +200,7 @@ function startNowPlayingRefresh(client, player) {
         await refreshNowPlayingMessage(client, activePlayer);
     }, REFRESH_INTERVAL_MS);
 
+    interval.unref?.();
     client.data.set(key, interval);
 }
 
@@ -214,7 +215,7 @@ function stopNowPlayingRefresh(client, guildId) {
 }
 
 function clearNowPlayingState(client, guildId) {
-    client.data.delete(getRefreshKey(guildId));
+    stopNowPlayingRefresh(client, guildId);
     client.data.delete(getRenderKey(guildId));
     client.data.delete(getEditQueueKey(guildId));
     client.data.delete(getSettingsKey(guildId));

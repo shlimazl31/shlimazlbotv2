@@ -1,7 +1,7 @@
 const mongoose = require("mongoose");
 
 const createUser = mongoose.Schema({
-    id: { type: String, required: true },
+    id: { type: String, required: true, index: true },
     ban: {
         status: { type: Boolean, default: false },
         reason: { type: String, default: null },
@@ -100,5 +100,8 @@ const createUser = mongoose.Schema({
         default: [],
     },
 });
+
+createUser.index({ "premium.active": 1, "premium.expiresAt": 1 });
+createUser.index({ "dashboard.guilds.id": 1 });
 
 module.exports = mongoose.model("user", createUser);

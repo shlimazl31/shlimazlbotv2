@@ -1,7 +1,7 @@
 const mongoose = require("mongoose");
 
 const createGuild = mongoose.Schema({
-    id: { type: String, required: true },
+    id: { type: String, required: true, index: true },
     dj: {
         status: { type: Boolean, default: false },
         role: { type: String, default: null },
@@ -22,6 +22,14 @@ const createGuild = mongoose.Schema({
             enabled: { type: Boolean, default: false },
             channelId: { type: String, default: null },
             messageId: { type: String, default: null },
+        },
+        playlist: {
+            enabled: { type: Boolean, default: true },
+            maxPlaylists: { type: Number, default: 10 },
+        },
+        sleepTimer: {
+            enabled: { type: Boolean, default: true },
+            maxMinutes: { type: Number, default: 240 },
         },
     },
     premium: {
@@ -59,5 +67,7 @@ const createGuild = mongoose.Schema({
         },
     },
 });
+
+createGuild.index({ "premium.active": 1, "premium.expiresAt": 1 });
 
 module.exports = mongoose.model("guild", createGuild);

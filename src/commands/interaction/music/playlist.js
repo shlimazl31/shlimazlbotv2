@@ -88,6 +88,14 @@ module.exports = {
     requiredPlan: "pro",
     devOnly: false,
     run: async (client, interaction, player) => {
+        const playlistSettings = getPlaylistSettings(client, interaction.guildId);
+        if (!playlistSettings.enabled) {
+            return interaction.reply({
+                embeds: [status(client, interaction, "warning", "Playlist", "Playlist komutları bu sunucuda dashboard üzerinden kapatılmış.")],
+                flags: [MessageFlags.Ephemeral],
+            });
+        }
+
         const subcommand = interaction.options.getSubcommand();
 
         if (subcommand === "library") return showLibrary(client, interaction);
@@ -106,10 +114,18 @@ async function createPlaylist(client, interaction) {
     const name = normalizePlaylistName(interaction.options.getString("name"));
     const userData = getCachedUserData(client, interaction.user.id);
     const playlists = ensurePlaylists(userData);
+    const playlistSettings = getPlaylistSettings(client, interaction.guildId);
 
     if (findPlaylist(playlists, name)) {
         return interaction.reply({
             embeds: [status(client, interaction, "warning", "Playlist", `**${name}** adında bir playlist zaten var.`)],
+            flags: [MessageFlags.Ephemeral],
+        });
+    }
+
+    if (playlists.length >= playlistSettings.maxPlaylists) {
+        return interaction.reply({
+            embeds: [status(client, interaction, "warning", "Playlist", `Bu sunucuda kullanıcı başı playlist limiti **${playlistSettings.maxPlaylists}**.`)],
             flags: [MessageFlags.Ephemeral],
         });
     }
@@ -139,6 +155,14 @@ async function saveQueue(client, interaction, player) {
     if (findPlaylist(playlists, name)) {
         return interaction.reply({
             embeds: [status(client, interaction, "warning", "Playlist", `**${name}** adında bir playlist zaten var.`)],
+            flags: [MessageFlags.Ephemeral],
+        });
+    }
+
+    const playlistSettings = getPlaylistSettings(client, interaction.guildId);
+    if (playlists.length >= playlistSettings.maxPlaylists) {
+        return interaction.reply({
+            embeds: [status(client, interaction, "warning", "Playlist", `Bu sunucuda kullanıcı başı playlist limiti **${playlistSettings.maxPlaylists}**.`)],
             flags: [MessageFlags.Ephemeral],
         });
     }
@@ -330,4 +354,15 @@ function status(client, interaction, tone, title, description) {
         guildId: interaction.guildId,
         description,
     });
+}
+
+function getPlaylistSettings(client, guildId) {
+    const guildData = client.data.get(`guildData_${guildId}`) || {};
+    const settings = guildData.settings?.playlist || {};
+    const maxPlaylists = Number(settings.maxPlaylists);
+
+    return {
+        enabled: settings.enabled !== false,
+        maxPlaylists: Number.isFinite(maxPlaylists) ? Math.min(Math.max(Math.trunc(maxPlaylists), 1), 50) : 10,
+    };
 }

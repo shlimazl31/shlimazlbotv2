@@ -1,23 +1,34 @@
 const cron = require("node-cron");
 
 module.exports = async (client) => {
-    const updateSettings = async (items, settingMap, dataModel, type) => {
-        for (const item of items) {
-            const setting = settingMap.get(`${type}_${item.id}`);
+    if (client.cacheSweeperStarted) return;
 
-            await dataModel.findOneAndUpdate({ id: item.id }, { $set: setting }, { upsert: true, new: true });
-        }
-    };
+    const cacheTtlMs = Number(process.env.DATA_CACHE_TTL_MS || 5 * 60 * 1000);
+    const sweepCron = process.env.DATA_CACHE_SWEEP_CRON || "0 */15 * * * *";
+    client.cacheSweeperStarted = true;
 
-    cron.schedule("0 */10 * * * *", async () => {
+    cron.schedule(sweepCron, async () => {
         try {
-            const guilds = await client.guildData.find();
-            await updateSettings(guilds, client.data, client.guildData, "guildData");
+            const now = Date.now();
+            let removed = 0;
 
-            const users = await client.userData.find();
-            await updateSettings(users, client.data, client.userData, "userData");
+            for (const [key, value] of client.data.entries()) {
+                if (!key.startsWith("guildData_") && !key.startsWith("userData_")) continue;
+                if (!value?.__cachedAt || now - value.__cachedAt < cacheTtlMs) continue;
+
+                client.data.delete(key);
+                removed += 1;
+
+                if (key.startsWith("guildData_")) {
+                    client.data.delete(key.replace("guildData_", "guildSettings_"));
+                }
+            }
+
+            if (removed > 0 && process.env.DEBUG_CACHE_SWEEP === "true") {
+                console.log(`[CACHE] ${removed} stale data item cleared`);
+            }
         } catch (error) {
-            console.error("An error occurred while updating the database:", error);
+            console.error("Cache sweep error:", error);
         }
     });
 };

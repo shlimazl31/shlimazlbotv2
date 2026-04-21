@@ -1,16 +1,15 @@
 const { EmbedBuilder, MessageFlags } = require("discord.js");
 const fetch = require("node-fetch");
-const { getGuildSettings } = require("../../../functions/guildSettings.js");
 const { t } = require("../../../functions/t.js");
 
 module.exports = {
-    name: "filmara",
-    description: "Film ara",
+    name: "movie-search",
+    description: "Search for a movie.",
     category: "film",
     options: [
         {
             name: "query",
-            description: "Film adi girin",
+            description: "Enter a movie name.",
             type: 3,
             required: true,
         },
@@ -62,6 +61,6 @@ module.exports = {
     },
 };
 
-function getMovieLanguage(client, guildId) {
-    return getGuildSettings(client, guildId).language === "en" ? "en-US" : "tr-TR";
+function getMovieLanguage() {
+    return "en-US";
 }

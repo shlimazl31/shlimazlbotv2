@@ -1,11 +1,12 @@
 const { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, MessageFlags } = require("discord.js");
+const { t } = require("./t.js");
 
 module.exports = {
     createPage: async (client, response, embed, pages) => {
         let page = 0;
 
         const updateEmbed = (pageIndex) => {
-            embed.setDescription(pages[pageIndex] || "No data found.");
+            embed.setDescription(pages[pageIndex] || t(client, response.guildId, "common.noData"));
         };
 
         updateEmbed(page);
@@ -30,7 +31,7 @@ module.exports = {
                 if (button.user.id !== response.user.id) {
                     const embedDenied = new EmbedBuilder()
                         .setColor(client.config.embedColor)
-                        .setDescription(`You are not allowed to use this button.`);
+                        .setDescription(t(client, response.guildId, "common.buttonDenied"));
 
                     return button.reply({ embeds: [embedDenied], flags: [MessageFlags.Ephemeral] });
                 }

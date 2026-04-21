@@ -1,6 +1,7 @@
 const { ActivityType } = require("discord.js");
 const emojiConfig = require("../../../settings/emoji.js");
 const axios = require("axios");
+const { ensureGuildSettings } = require("../../../functions/guildSettings.js");
 
 const updateApiStatus = async (client, servers, members) => {
     try {
@@ -25,6 +26,7 @@ module.exports = async (client) => {
     guildData.forEach((x) => {
         const { _id, __v, ...data } = x.toObject();
 
+        ensureGuildSettings(data);
         client.data.set(`guildData_${x.id}`, data);
     });
 
@@ -52,7 +54,7 @@ module.exports = async (client) => {
         const status = [
             { type: ActivityType.Playing, name: "/play" },
             { type: ActivityType.Listening, name: `${members} Users` },
-            { type: ActivityType.Playing, name: "benbotdegilim.online" },
+            { type: ActivityType.Playing, name: "bit.ly/shlimazlbot" },
         ];
 
         const index = Math.floor(Math.random() * status.length);

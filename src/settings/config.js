@@ -1,4 +1,6 @@
 const { VoicePlugin } = require("rainlink-voice");
+const { SpotifyPlugin } = require("rainlink-spotify");
+const { resolveNode } = require("../functions/lavalinkNodeControl.js");
 require("dotenv").config();
 
 function parseBoolean(value) {
@@ -83,6 +85,23 @@ function parseNumber(value, fallback) {
     return Number.isFinite(parsedValue) ? parsedValue : fallback;
 }
 
+function resolveRainlinkPlugins() {
+    const plugins = [new VoicePlugin()];
+
+    if (process.env.SPOTIFY_CLIENT_ID && process.env.SPOTIFY_CLIENT_SECRET) {
+        plugins.push(new SpotifyPlugin({
+            clientId: process.env.SPOTIFY_CLIENT_ID,
+            clientSecret: process.env.SPOTIFY_CLIENT_SECRET,
+            playlistPageLimit: parseNumber(process.env.SPOTIFY_PLAYLIST_PAGE_LIMIT, 2),
+            albumPageLimit: parseNumber(process.env.SPOTIFY_ALBUM_PAGE_LIMIT, 2),
+            searchLimit: parseNumber(process.env.SPOTIFY_SEARCH_LIMIT, 20),
+            searchMarket: process.env.SPOTIFY_SEARCH_MARKET || "TR",
+        }));
+    }
+
+    return plugins;
+}
+
 module.exports = {
     token: process.env.TOKEN,
     prefix: process.env.PREFIX || "!",
@@ -103,12 +122,13 @@ module.exports = {
         resumeTimeout: 5000,
         retryTimeout: 5000,
         retryCount: Infinity,
+        nodeResolver: resolveNode,
         defaultSearchEngine: process.env.DEFAULT_SEARCH_ENGINE || "youtube",
         searchFallback: {
             enable: true,
             engine: process.env.DEFAULT_SEARCH_ENGINE || "youtube",
         },
     },
-    rainlinkPlugins: [new VoicePlugin()],
+    rainlinkPlugins: resolveRainlinkPlugins(),
     rainlinkNodes: resolveLavalinkNodes(),
 };

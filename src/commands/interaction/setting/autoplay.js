@@ -1,8 +1,11 @@
-const { EmbedBuilder, MessageFlags } = require("discord.js");
+const { MessageFlags } = require("discord.js");
+const { createStatusEmbed } = require("../../../functions/createResponseEmbed.js");
+const { PREMIUM_FEATURES } = require("../../../functions/premium.js");
+const { t } = require("../../../functions/t.js");
 
 module.exports = {
     name: "autoplay",
-    description: "Otomatik oynatma modunu değiştir",
+    description: "Otomatik oynatma modunu degistir",
     category: "setting",
     permissions: {
         bot: [],
@@ -13,16 +16,23 @@ module.exports = {
         player: true,
         current: true,
     },
+    premium: PREMIUM_FEATURES.AUTOPLAY,
     devOnly: false,
     run: async (client, interaction, player) => {
-        const embed = new EmbedBuilder().setColor(client.config.embedColor);
+        const guildId = interaction.guildId;
+        const embed = createStatusEmbed(client, {
+            tone: "info",
+            title: t(client, guildId, "music.autoplay.title"),
+            guildId,
+        });
         const track = player.queue.isEmpty ? player.queue.current : player.queue[player.queue.size - 1];
 
         if (!isYoutube(track)) {
-            embed.setDescription(
-                `${player.queue.isEmpty() ? "Mevcut şarkının platformu desteklenmiyor" : "Son sıradaki şarkının platformu desteklenmiyor"}. Otomatik oynatma modu sadece YouTube ile kullanılabilir.`,
-            );
+            const target = player.queue.isEmpty
+                ? t(client, guildId, "music.autoplay.currentTrack")
+                : t(client, guildId, "music.autoplay.lastTrack");
 
+            embed.setDescription(t(client, guildId, "music.autoplay.unsupported", { target }));
             return interaction.reply({ embeds: [embed], flags: [MessageFlags.Ephemeral] });
         }
 
@@ -30,12 +40,10 @@ module.exports = {
 
         if (autoplay) {
             client.data.delete("autoplay", player.guildId);
-
-            embed.setDescription(`Otomatik oynatma modu \`devre dışı\` bırakıldı`);
+            embed.setDescription(t(client, guildId, "music.autoplay.disabled"));
         } else {
             client.data.set("autoplay", player.guildId);
-
-            embed.setDescription(`Otomatik oynatma modu \`etkinleştirildi\``);
+            embed.setDescription(t(client, guildId, "music.autoplay.enabled"));
         }
 
         return interaction.reply({ embeds: [embed], flags: [MessageFlags.Ephemeral] });
@@ -43,5 +51,5 @@ module.exports = {
 };
 
 function isYoutube(track) {
-    return track?.source === "youtube";
+    return track?.source === "youtube" || track?.sourceName === "youtube";
 }

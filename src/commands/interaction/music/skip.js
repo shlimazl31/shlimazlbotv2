@@ -1,10 +1,11 @@
 const { MessageFlags } = require("discord.js");
 const { createStatusEmbed } = require("../../../functions/createResponseEmbed.js");
 const { refreshNowPlayingMessage } = require("../../../functions/createNowPlayingCard.js");
+const { t } = require("../../../functions/t.js");
 
 module.exports = {
     name: "skip",
-    description: "Sarkiyi atla",
+    description: "Şarkıyı atla",
     category: "music",
     permissions: {
         bot: [],
@@ -17,19 +18,24 @@ module.exports = {
     },
     devOnly: false,
     run: async (client, interaction, player) => {
-        const embed = createStatusEmbed(client, { tone: "warning", title: "Skip" });
-        const guildData = client.data.get(`guildData_${interaction.guildId}`) || { dj: { status: false, role: null } };
+        const guildId = interaction.guildId;
+        const embed = createStatusEmbed(client, {
+            tone: "warning",
+            title: t(client, guildId, "music.skip.title"),
+            guildId,
+        });
+        const guildData = client.data.get(`guildData_${guildId}`) || { dj: { status: false, role: null } };
         const hasDJRole = guildData?.dj?.status && interaction.member.roles.cache.has(guildData.dj.role);
         const isAdmin = interaction.member.permissions.has("ManageGuild");
 
         if (hasDJRole || isAdmin) {
             if (player.queue.isEmpty && !client.data.get("autoplay", player.guildId)) {
-                embed.setDescription("Kuyruk bos. Atlama yapilamiyor.");
+                embed.setDescription(t(client, guildId, "music.skip.empty"));
                 return interaction.reply({ embeds: [embed], flags: [MessageFlags.Ephemeral] });
             }
 
             player.skip();
-            embed.setDescription("Sarki atlandi.");
+            embed.setDescription(t(client, guildId, "music.skip.done"));
             return interaction.reply({ embeds: [embed], flags: [MessageFlags.Ephemeral] });
         }
 
@@ -37,7 +43,7 @@ module.exports = {
         const requiredVotes = Math.ceil(voiceMembers.size / 2);
 
         if (player.voteskip) {
-            embed.setDescription("Bu sarki icin zaten bir atlama oylamasi aktif.");
+            embed.setDescription(t(client, guildId, "music.skip.voteActive"));
             return interaction.reply({ embeds: [embed], flags: [MessageFlags.Ephemeral] });
         }
 
@@ -47,14 +53,14 @@ module.exports = {
             required: requiredVotes,
         };
 
-        embed.setDescription(`Atlama oylamasi basladi. **${player.voteskip.votes.size}/${player.voteskip.required}** oy toplandi.`);
+        embed.setDescription(t(client, guildId, "music.skip.voteStarted", { votes: player.voteskip.votes.size, required: player.voteskip.required }));
         await interaction.reply({ embeds: [embed], flags: [MessageFlags.Ephemeral] });
 
         const voteMessage = await interaction.channel.send({ embeds: [embed] });
-        await voteMessage.react("✅").catch(() => null);
+        await voteMessage.react("\u2705").catch(() => null);
 
         const filter = (reaction, user) =>
-            reaction.emoji.name === "✅" &&
+            reaction.emoji.name === "\u2705" &&
             !user.bot &&
             interaction.member.voice.channel.members.has(user.id) &&
             !player.voteskip.voters.has(user.id);
@@ -73,8 +79,9 @@ module.exports = {
 
             const progressEmbed = createStatusEmbed(client, {
                 tone: "warning",
-                title: "Skip Oylamasi",
-                description: `Atlama oylamasi suruyor. **${player.voteskip.votes.size}/${player.voteskip.required}** oy toplandi.`,
+                title: t(client, guildId, "music.skip.voteTitle"),
+                guildId,
+                description: t(client, guildId, "music.skip.voteProgress", { votes: player.voteskip.votes.size, required: player.voteskip.required }),
             });
 
             await voteMessage.edit({ embeds: [progressEmbed] }).catch(() => null);
@@ -84,8 +91,9 @@ module.exports = {
 
                 const successEmbed = createStatusEmbed(client, {
                     tone: "success",
-                    title: "Skip Oylamasi",
-                    description: "Yeterli oy toplandi. Sarki atlandi.",
+                    title: t(client, guildId, "music.skip.voteTitle"),
+                    guildId,
+                    description: t(client, guildId, "music.skip.votePassed"),
                 });
 
                 delete player.voteskip;
@@ -101,8 +109,9 @@ module.exports = {
 
             const failEmbed = createStatusEmbed(client, {
                 tone: "error",
-                title: "Skip Oylamasi",
-                description: "Oylama bitti ama yeterli oy toplanamadi.",
+                title: t(client, guildId, "music.skip.voteTitle"),
+                guildId,
+                description: t(client, guildId, "music.skip.voteFailed"),
             });
 
             delete player.voteskip;

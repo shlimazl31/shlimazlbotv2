@@ -1,4 +1,5 @@
 const { PermissionsBitField, EmbedBuilder } = require("discord.js");
+const { t } = require("../../../functions/t.js");
 
 module.exports = async (client, oldState, newState) => {
     if (newState.channelId && newState.channel.type == 13 && newState.guild.members.me.voice.suppress) {
@@ -25,7 +26,7 @@ module.exports = async (client, oldState, newState) => {
     if (!oldStatePlayer) return;
 
     const isBotAlone =
-        oldState.guild.members.me.voice?.channel && oldState.guild.members.me.voice.channel.members.filter((m) => !m.user.bot).size === 0;
+        oldState.guild.members.me.voice?.channel && oldState.guild.members.me.voice.channel.members.filter((member) => !member.user.bot).size === 0;
 
     const isNotPlaying = !oldStatePlayer.playing && !oldStatePlayer.queue.current;
 
@@ -34,22 +35,20 @@ module.exports = async (client, oldState, newState) => {
             await delay(client.config.leaveTimeout);
 
             const vcMembers = oldState.guild.members.me.voice.channel?.members.size;
-            const leaveEmbed = await client.channels.cache.get(oldStatePlayer.textId);
-            const stillBotAlone = oldState.guild.members.me.voice.channel?.members.filter((m) => !m.user.bot).size === 0;
+            const leaveChannel = await client.channels.cache.get(oldStatePlayer.textId);
+            const stillBotAlone = oldState.guild.members.me.voice.channel?.members.filter((member) => !member.user.bot).size === 0;
             const stillNotPlaying = !oldStatePlayer.playing && !oldStatePlayer.queue.current;
 
             if ((stillBotAlone || stillNotPlaying) && (!vcMembers || vcMembers === 1 || vcMembers > 1)) {
-                if (oldStatePlayer.message) await oldStatePlayer.message.delete().catch((e) => {});
+                if (oldStatePlayer.message) await oldStatePlayer.message.delete().catch(() => {});
 
-                oldStatePlayer.destroy().catch((e) => {});
+                oldStatePlayer.destroy().catch(() => {});
 
                 const timeoutEmbed = new EmbedBuilder()
                     .setColor(client.config.embedColor)
-                    .setDescription(
-                        `Kanalda kimse kalmadığı veya müzik çalmadığı için ayrılıyorum. 👋 Kesintisiz müzik keyfi istersen \`24/7\` komutunu kullanabilirsin! 👍`,
-                    );
+                    .setDescription(t(client, oldState.guild.id, "playerEvents.leaveTimeout"));
 
-                return leaveEmbed.send({ embeds: [timeoutEmbed] }).then((msg) => {
+                return leaveChannel.send({ embeds: [timeoutEmbed] }).then((msg) => {
                     if (!msg) return;
 
                     setTimeout(() => {
@@ -60,3 +59,7 @@ module.exports = async (client, oldState, newState) => {
         }
     }
 };
+
+function delay(ms) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+}

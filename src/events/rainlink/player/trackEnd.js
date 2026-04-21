@@ -1,12 +1,14 @@
-const { stopNowPlayingRefresh } = require("../../../functions/createNowPlayingCard.js");
+const { clearNowPlayingState, stopNowPlayingRefresh } = require("../../../functions/createNowPlayingCard.js");
+const { disablePlayerMessage } = require("../../../functions/miniPlayer.js");
 
 module.exports = async (client, player) => {
     if (!player) return;
 
-    const guild = await client.guilds.cache.get(player.guildId);
+    const guild = client.guilds.cache.get(player.guildId);
 
-    console.debug(`[DEBUG] Track ended from ${guild.name} (${guild.id})`);
+    if (guild) console.debug(`[DEBUG] Track ended from ${guild.name} (${guild.id})`);
     stopNowPlayingRefresh(client, player.guildId);
+    clearNowPlayingState(client, player.guildId);
 
-    if (player.message) player.message.delete().catch((e) => {});
+    await disablePlayerMessage(client, player);
 };

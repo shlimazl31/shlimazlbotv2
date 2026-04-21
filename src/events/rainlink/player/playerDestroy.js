@@ -1,5 +1,6 @@
 const getBestLavalinkNode = require("../../../functions/getBestLavalinkNode.js");
-const { stopNowPlayingRefresh } = require("../../../functions/createNowPlayingCard.js");
+const { clearNowPlayingState, stopNowPlayingRefresh } = require("../../../functions/createNowPlayingCard.js");
+const { disablePlayerMessage } = require("../../../functions/miniPlayer.js");
 
 module.exports = async (client, player) => {
     if (!player) return;
@@ -9,8 +10,9 @@ module.exports = async (client, player) => {
 
     console.debug(`[DEBUG] Player destroyed from [${guild.name}] (${guild.id})`);
     stopNowPlayingRefresh(client, guild.id);
+    clearNowPlayingState(client, guild.id);
 
-    if (player.message) player.message.delete().catch((e) => {});
+    await disablePlayerMessage(client, player);
 
     const guildData = client.data.get(`guildData_${guild.id}`);
 
@@ -21,7 +23,8 @@ module.exports = async (client, player) => {
         if (!voice || !text) {
             guildData.reconnect = { status: false, text: null, voice: null };
 
-            await guildData.save();
+            await client.guildData.findOneAndUpdate({ id: guild.id }, { $set: { reconnect: guildData.reconnect } }, { upsert: true, new: true });
+            client.data.set(`guildData_${guild.id}`, guildData);
 
             return;
         }

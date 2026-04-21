@@ -1,4 +1,5 @@
 const { EmbedBuilder, WebhookClient } = require("discord.js");
+const { t } = require("../../../functions/t.js");
 
 module.exports = async (client, error, command, interaction) => {
     console.error(`[ERROR] Command error from ${command.name}`, error);
@@ -55,7 +56,7 @@ ${error.stack}
 
     const userEmbed = new EmbedBuilder()
         .setColor("#FF0000")
-        .setDescription("Komut calistirilirken bir hata olustu. Lutfen daha sonra tekrar deneyin.");
+        .setDescription(t(client, interaction.guildId, "permissions.commandError"));
 
     if (interaction.replied || interaction.deferred) {
         await interaction.followUp({ embeds: [userEmbed], ephemeral: true });

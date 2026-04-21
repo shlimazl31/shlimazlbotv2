@@ -1,5 +1,6 @@
 const { readdirSync } = require("node:fs");
 const path = require("node:path");
+const { attachCommandPlan } = require("../functions/premium.js");
 
 module.exports = (client) => {
     try {
@@ -9,11 +10,11 @@ module.exports = (client) => {
             const commands = readdirSync(`./src/commands/interaction/${dir}/`).filter((file) => file.endsWith(".js"));
 
             for (const file of commands) {
-                const pull = require(path.join(__dirname, `../commands/interaction/${dir}/${file}`));
+                const pull = attachCommandPlan(require(path.join(__dirname, `../commands/interaction/${dir}/${file}`)));
 
                 if (pull.name) {
                     client.slash.set(pull.name, pull);
-                    data.push(pull);
+                    if (!pull.devOnly) data.push(pull);
                 } else {
                     continue;
                 }

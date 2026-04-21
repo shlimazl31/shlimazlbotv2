@@ -1,4 +1,7 @@
-const { EmbedBuilder, MessageFlags } = require("discord.js");
+const { MessageFlags } = require("discord.js");
+const { createStatusEmbed } = require("../../../functions/createResponseEmbed.js");
+const { canUseFilter, getEffectivePlan, getFilterRequiredPlan, getPlanLabel } = require("../../../functions/premium.js");
+const { t } = require("../../../functions/t.js");
 
 module.exports = {
     name: "filter",
@@ -12,21 +15,20 @@ module.exports = {
             required: true,
             choices: [
                 { name: "8d", value: "eightD" },
-                { name: "bas", value: "bass" },
+                { name: "bass", value: "bass" },
                 { name: "chipmunk", value: "chimpunk" },
-                { name: "temizle", value: "clear" },
+                { name: "clear", value: "clear" },
                 { name: "earrape", value: "earrape" },
-                { name: "elektronik", value: "electronic" },
+                { name: "electronic", value: "electronic" },
                 { name: "karaoke", value: "karaoke" },
                 { name: "nightcore", value: "nightcore" },
-                { name: "perde", value: "pitch" },
-                { name: "yavaş", value: "slow" },
-                { name: "yumuşak", value: "soft" },
+                { name: "pitch", value: "pitch" },
+                { name: "slow", value: "slow" },
+                { name: "soft", value: "soft" },
                 { name: "tremolo", value: "tremolo" },
                 { name: "treblebass", value: "treblebass" },
                 { name: "vaporwave", value: "vaporwave" },
                 { name: "vibrato", value: "vibrato" },
-                // Ek seçenekler için resmi RainlinkFilter dokümantasyonunu kontrol edin: https://docs-rainlinkjs.vercel.app/classes/RainlinkFilter.html#set
             ],
         },
     ],
@@ -39,21 +41,37 @@ module.exports = {
         player: true,
         current: true,
     },
+    requiredPlan: "plus",
     devOnly: false,
     run: async (client, interaction, player) => {
-        const embed = new EmbedBuilder().setColor(client.config.embedColor);
+        const guildId = interaction.guildId;
+        const embed = createStatusEmbed(client, {
+            tone: "info",
+            title: t(client, guildId, "music.filter.title"),
+            guildId,
+        });
         const mode = interaction.options.getString("mode");
-        const currentVolume = player.volume;
+        const plan = getEffectivePlan(client, guildId, interaction.user.id);
 
-        player.filter.set(mode);
-
-        if (mode === "clear") {
-            embed.setDescription(`Filtre temizlendi.`);
-        } else {
-            embed.setDescription(`Filtre \`${mode}\` olarak ayarlandı.`);
+        if (!canUseFilter(plan, mode)) {
+            embed.setDescription(
+                t(client, guildId, "permissions.filterPlanRequired", {
+                    filter: mode,
+                    plan: getPlanLabel(getFilterRequiredPlan(mode)),
+                }),
+            );
+            return interaction.reply({ embeds: [embed], flags: [MessageFlags.Ephemeral] });
         }
 
+        const currentVolume = player.volume;
+        player.filter.set(mode);
         player.setVolume(currentVolume);
+
+        embed.setDescription(
+            mode === "clear"
+                ? t(client, guildId, "music.filter.cleared")
+                : t(client, guildId, "music.filter.set", { mode }),
+        );
 
         return interaction.reply({ embeds: [embed], flags: [MessageFlags.Ephemeral] });
     },

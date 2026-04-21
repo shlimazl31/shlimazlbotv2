@@ -2,12 +2,18 @@ const { EmbedBuilder } = require("discord.js");
 const { createDataGuild, createDataUser } = require("../../../functions/createData.js");
 const createSupportComponents = require("../../../functions/createSupportComponents.js");
 const { permissions } = require("../../../functions/getPermission.js");
+const { recordCommandUsage } = require("../../../functions/commandStats.js");
+const { t } = require("../../../functions/t.js");
 
 module.exports = async (client, message) => {
-    if (message.author.bot || !message.guild || message.system || message.webhookId) return;
+    if (message.author.bot || message.system || message.webhookId) return;
 
-    await createDataGuild(client, message.guild);
-    await createDataUser(client, message.author);
+    if (!message.guild) {
+        await recordDirectMessage(client, message);
+        return;
+    }
+
+    await warmupData(client, message.guild, message.author);
 
     const userData = client.data.get(`userData_${message.author.id}`);
     const embed = new EmbedBuilder().setColor(client.config.embedColor);
@@ -23,9 +29,7 @@ module.exports = async (client, message) => {
     if (botMissingPermissions.length > 0) {
         const permissionEmbed = new EmbedBuilder()
             .setColor(client.config.embedColor)
-            .setDescription(
-                `The bot doesn't have one of these permissions \`${botMissingPermissions.join(", ")}\`.\nPlease double check them in your server role & channel settings.`,
-            );
+            .setDescription(t(client, message.guildId, "permissions.botMissingBase", { permissions: botMissingPermissions.join(", ") }));
 
         const dmChannel = message.author.dmChannel == null ? await message.author.createDM() : message.author.dmChannel;
         return dmChannel.send({ embeds: [permissionEmbed], components });
@@ -34,7 +38,7 @@ module.exports = async (client, message) => {
     const mention = new RegExp(`^<@!?${client.user.id}>( |)$`);
 
     if (message.content.match(mention)) {
-        embed.setDescription("Use `/help` command to get list of commands.");
+        embed.setDescription(t(client, message.guildId, "permissions.mentionHelp"));
         message.reply({ embeds: [embed] });
     }
 
@@ -64,19 +68,62 @@ module.exports = async (client, message) => {
     console.log(
         `[PREFIX] [${command.name}] | (${message.author.username})[${message.author.id}] | (${message.guild.name})[${message.guildId}]`,
     );
+    recordCommandUsage(client, {
+        type: "prefix",
+        commandName: command.name,
+        guildId: message.guildId,
+        userId: message.author.id,
+    });
 
     if (userData && userData.ban.status) {
-        embed.setDescription(`You have been banned from using the bot.\n\`\`\`${userData.ban.reason}\`\`\``);
+        embed.setDescription(t(client, message.guildId, "permissions.banned", { reason: userData.ban.reason }));
         return message.reply({ embeds: [embed] });
     }
 
     const maintenance = client.data.get("maintenance");
 
     if (maintenance && !client.config.dev.includes(message.author.id)) {
-        embed.setDescription("The bot is currently under maintenance. Please try again later.");
+        embed.setDescription(t(client, message.guildId, "permissions.maintenance"));
         return message.reply({ embeds: [embed] });
     }
 
     const player = client.rainlink.players.get(message.guildId);
     return permissions(client, message, command, embed, player, args);
 };
+
+async function recordDirectMessage(client, message) {
+    try {
+        await createDataUser(client, message.author);
+        await client.adminLog.create({
+            action: "dm.inbound",
+            actor: message.author.id,
+            targetType: "user",
+            targetId: message.author.id,
+            message: "Kullanıcı bota özel mesaj gönderdi.",
+            metadata: {
+                direction: "inbound",
+                messageId: message.id,
+                username: message.author.username,
+                globalName: message.author.globalName || message.author.username,
+                avatar: message.author.avatar || null,
+                content: message.content || "",
+                preview: (message.content || "").slice(0, 300),
+                attachmentCount: message.attachments?.size || 0,
+            },
+        });
+    } catch (error) {
+        console.error("Admin inbox DM log error:", error);
+    }
+}
+
+async function warmupData(client, guild, user) {
+    const dataPromise = Promise.all([
+        createDataGuild(client, guild),
+        createDataUser(client, user),
+    ]).catch((error) => console.error("Data warmup error:", error));
+
+    await Promise.race([
+        dataPromise,
+        new Promise((resolve) => setTimeout(resolve, 1200)),
+    ]);
+}

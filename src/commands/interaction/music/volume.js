@@ -2,6 +2,7 @@ const { MessageFlags } = require("discord.js");
 const { minVolume, maxVolume } = require("../../../settings/config.js");
 const { createStatusEmbed } = require("../../../functions/createResponseEmbed.js");
 const { refreshNowPlayingMessage } = require("../../../functions/createNowPlayingCard.js");
+const { t } = require("../../../functions/t.js");
 
 module.exports = {
     name: "volume",
@@ -28,18 +29,19 @@ module.exports = {
     },
     devOnly: false,
     run: async (client, interaction, player) => {
-        const embed = createStatusEmbed(client, { tone: "info", title: "Ses" });
+        const guildId = interaction.guildId;
+        const embed = createStatusEmbed(client, { tone: "info", title: t(client, guildId, "music.volume.title"), guildId });
         const value = interaction.options.getInteger("value");
 
         if (!value) {
-            embed.setDescription(`Mevcut ses seviyesi \`${player.volume}%\`.`);
+            embed.setDescription(t(client, guildId, "music.volume.current", { volume: player.volume }));
             return interaction.reply({ embeds: [embed], flags: [MessageFlags.Ephemeral] });
         }
 
         player.setVolume(value);
         await refreshNowPlayingMessage(client, player);
 
-        embed.setDescription(`Ses seviyesi \`${value}%\` olarak ayarlandi.`);
+        embed.setDescription(t(client, guildId, "music.volume.set", { volume: value }));
         return interaction.reply({ embeds: [embed], flags: [MessageFlags.Ephemeral] });
     },
 };

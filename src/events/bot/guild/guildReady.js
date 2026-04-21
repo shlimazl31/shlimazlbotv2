@@ -1,167 +1,155 @@
 const { ChannelType, PermissionFlagsBits, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require("discord.js");
+const { t } = require("../../../functions/t.js");
 
 module.exports = async (client, guild) => {
-    // Sadece destek sunucusu için çalışsın
     if (guild.id !== "1341164136079294487") return;
 
     try {
-        // Korunacak kanal ve kategori ID'leri
         const protectedIds = [
-            "1373772854029582480", // Kategori
-            "1370432444569751632", // Kanal
-            "1373772886594027712", // Kanal
-            "1373773051749072916", // Kanal
-            "1373772919083241572"  // Kanal
+            "1373772854029582480",
+            "1370432444569751632",
+            "1373772886594027712",
+            "1373773051749072916",
+            "1373772919083241572",
         ];
 
-        // Tüm mevcut kanalları sil (korunacak kanallar hariç)
         await Promise.all(
             guild.channels.cache
-                .filter(channel => !protectedIds.includes(channel.id) && !protectedIds.includes(channel.parentId))
-                .map(channel => channel.delete().catch(() => {}))
+                .filter((channel) => !protectedIds.includes(channel.id) && !protectedIds.includes(channel.parentId))
+                .map((channel) => channel.delete().catch(() => {})),
         );
 
-        // Ana kategori oluştur
         const mainCategory = await guild.channels.create({
-            name: "📢・Bilgilendirme",
+            name: "bilgilendirme",
             type: ChannelType.GuildCategory,
             permissionOverwrites: [
                 {
                     id: guild.id,
-                    allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.ReadMessageHistory]
-                }
-            ]
+                    allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.ReadMessageHistory],
+                },
+            ],
         });
 
-        // Bilgilendirme kanalları
         await guild.channels.create({
-            name: "📢・duyurular",
+            name: "duyurular",
             type: ChannelType.GuildText,
             parent: mainCategory.id,
             permissionOverwrites: [
                 {
                     id: guild.id,
-                    allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.ReadMessageHistory]
-                }
-            ]
+                    allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.ReadMessageHistory],
+                },
+            ],
         });
 
         await guild.channels.create({
-            name: "📢・kurallar",
+            name: "kurallar",
             type: ChannelType.GuildText,
             parent: mainCategory.id,
             permissionOverwrites: [
                 {
                     id: guild.id,
-                    allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.ReadMessageHistory]
-                }
-            ]
+                    allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.ReadMessageHistory],
+                },
+            ],
         });
 
-        // Ticket kategorisi
         const ticketCategory = await guild.channels.create({
-            name: "🎫・Ticket Sistemi",
+            name: "ticket-sistemi",
             type: ChannelType.GuildCategory,
             permissionOverwrites: [
                 {
                     id: guild.id,
-                    allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.ReadMessageHistory]
-                }
-            ]
+                    allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.ReadMessageHistory],
+                },
+            ],
         });
 
-        // Ticket kanalı
         const ticketChannel = await guild.channels.create({
-            name: "🎫・ticket-oluştur",
+            name: "ticket-olustur",
             type: ChannelType.GuildText,
             parent: ticketCategory.id,
             permissionOverwrites: [
                 {
                     id: guild.id,
-                    allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.ReadMessageHistory]
-                }
-            ]
+                    allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.ReadMessageHistory],
+                },
+            ],
         });
 
-        // Ticket mesajını gönder
         const ticketEmbed = {
             color: parseInt(client.config.embedColor, 16),
-            title: "🎫 Destek Talebi",
-            description: "Destek almak için aşağıdaki butona tıklayın.",
+            title: t(client, guild.id, "ticket.requestTitle"),
+            description: t(client, guild.id, "ticket.requestDescription"),
             footer: {
-                text: `${guild.name} | Ticket Sistemi`
-            }
+                text: t(client, guild.id, "ticket.footer", { guild: guild.name }),
+            },
         };
 
-        const row = new ActionRowBuilder()
-            .addComponents(
-                new ButtonBuilder()
-                    .setCustomId("create_ticket")
-                    .setLabel("Ticket Oluştur")
-                    .setEmoji("🎫")
-                    .setStyle(ButtonStyle.Primary)
-            );
+        const row = new ActionRowBuilder().addComponents(
+            new ButtonBuilder()
+                .setCustomId("create_ticket")
+                .setLabel(t(client, guild.id, "ticket.createLabel"))
+                .setEmoji("\uD83C\uDFAB")
+                .setStyle(ButtonStyle.Primary),
+        );
 
         await ticketChannel.send({ embeds: [ticketEmbed], components: [row] });
 
-        // Genel sohbet kategorisi
         const chatCategory = await guild.channels.create({
-            name: "💬・Sohbet",
+            name: "sohbet",
             type: ChannelType.GuildCategory,
             permissionOverwrites: [
                 {
                     id: guild.id,
-                    allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.ReadMessageHistory]
-                }
-            ]
-        });
-
-        // Sohbet kanalları
-        await guild.channels.create({
-            name: "💬・genel-sohbet",
-            type: ChannelType.GuildText,
-            parent: chatCategory.id
+                    allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.ReadMessageHistory],
+                },
+            ],
         });
 
         await guild.channels.create({
-            name: "🎵・müzik-sohbeti",
+            name: "genel-sohbet",
             type: ChannelType.GuildText,
-            parent: chatCategory.id
+            parent: chatCategory.id,
         });
 
-        // Ses kanalları kategorisi
+        await guild.channels.create({
+            name: "müzik-sohbeti",
+            type: ChannelType.GuildText,
+            parent: chatCategory.id,
+        });
+
         const voiceCategory = await guild.channels.create({
-            name: "🔊・Ses Kanalları",
+            name: "ses-kanalları",
             type: ChannelType.GuildCategory,
             permissionOverwrites: [
                 {
                     id: guild.id,
-                    allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.Connect]
-                }
-            ]
-        });
-
-        // Ses kanalları
-        await guild.channels.create({
-            name: "🎵・Müzik Odası",
-            type: ChannelType.GuildVoice,
-            parent: voiceCategory.id
+                    allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.Connect],
+                },
+            ],
         });
 
         await guild.channels.create({
-            name: "🎮・Oyun Odası",
+            name: "müzik-odası",
             type: ChannelType.GuildVoice,
-            parent: voiceCategory.id
+            parent: voiceCategory.id,
         });
 
         await guild.channels.create({
-            name: "💬・Sohbet Odası",
+            name: "oyun-odası",
             type: ChannelType.GuildVoice,
-            parent: voiceCategory.id
+            parent: voiceCategory.id,
         });
 
-        console.log("[INFO] Destek sunucusu kanalları başarıyla düzenlendi!");
+        await guild.channels.create({
+            name: "sohbet-odası",
+            type: ChannelType.GuildVoice,
+            parent: voiceCategory.id,
+        });
+
+        console.log("[INFO] Support server channels were arranged successfully.");
     } catch (error) {
-        console.error("[ERROR] Destek sunucusu düzenlenirken hata oluştu:", error);
+        console.error("[ERROR] Support server setup failed:", error);
     }
-}; 
+};

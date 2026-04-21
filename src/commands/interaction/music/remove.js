@@ -1,4 +1,6 @@
-const { EmbedBuilder, MessageFlags } = require("discord.js");
+const { MessageFlags } = require("discord.js");
+const { createStatusEmbed } = require("../../../functions/createResponseEmbed.js");
+const { t } = require("../../../functions/t.js");
 
 module.exports = {
     name: "remove",
@@ -23,25 +25,27 @@ module.exports = {
     },
     devOnly: false,
     run: async (client, interaction, player) => {
-        const embed = new EmbedBuilder().setColor(client.config.embedColor);
+        const guildId = interaction.guildId;
+        const embed = createStatusEmbed(client, {
+            tone: "info",
+            title: t(client, guildId, "music.remove.title"),
+            guildId,
+        });
 
         if (player.queue.isEmpty) {
-            embed.setDescription(`Sıra boş.`);
-
+            embed.setDescription(t(client, guildId, "music.remove.empty"));
             return interaction.reply({ embeds: [embed], flags: [MessageFlags.Ephemeral] });
         }
 
         const position = interaction.options.getInteger("position");
 
         if (position > player.queue.size) {
-            embed.setDescription(`Girilen pozisyon sıradaki toplam şarkı sayısından büyük.`);
-
+            embed.setDescription(t(client, guildId, "music.remove.tooHigh"));
             return interaction.reply({ embeds: [embed], flags: [MessageFlags.Ephemeral] });
         }
 
         player.queue.remove(position - 1);
-
-        embed.setDescription(`\`${position}\` pozisyonundaki şarkı kaldırıldı`);
+        embed.setDescription(t(client, guildId, "music.remove.done", { position }));
 
         return interaction.reply({ embeds: [embed], flags: [MessageFlags.Ephemeral] });
     },

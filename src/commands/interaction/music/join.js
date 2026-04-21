@@ -1,5 +1,7 @@
-const { EmbedBuilder, MessageFlags } = require("discord.js");
+const { MessageFlags } = require("discord.js");
 const getBestLavalinkNode = require("../../../functions/getBestLavalinkNode.js");
+const { createStatusEmbed } = require("../../../functions/createResponseEmbed.js");
+const { t } = require("../../../functions/t.js");
 
 module.exports = {
     name: "join",
@@ -16,28 +18,31 @@ module.exports = {
     },
     devOnly: false,
     run: async (client, interaction, player) => {
-        const embed = new EmbedBuilder().setColor(client.config.embedColor);
+        const guildId = interaction.guildId;
+        const embed = createStatusEmbed(client, {
+            tone: "info",
+            title: t(client, guildId, "music.join.title"),
+            guildId,
+        });
 
         if (player) {
-            embed.setDescription(`Zaten bir ses kanalına katılmış durumda.`);
-
-            return interaction.reply({ embeds: [embed], flags: [MessageFlags.Ephemeral] });
-        } else {
-            const nodeName = await getBestLavalinkNode(client);
-
-            player = await client.rainlink.create({
-                guildId: interaction.guildId,
-                textId: interaction.channelId,
-                voiceId: interaction.member.voice.channelId,
-                shardId: interaction.guild.shardId,
-                volume: client.config.defaultVolume,
-                ...(nodeName && { nodeName }),
-                deaf: true,
-            });
-
-            embed.setDescription(`${interaction.member.voice.channel} kanalına katıldı.`);
-
+            embed.setDescription(t(client, guildId, "music.join.alreadyJoined"));
             return interaction.reply({ embeds: [embed], flags: [MessageFlags.Ephemeral] });
         }
+
+        const nodeName = await getBestLavalinkNode(client);
+
+        await client.rainlink.create({
+            guildId,
+            textId: interaction.channelId,
+            voiceId: interaction.member.voice.channelId,
+            shardId: interaction.guild.shardId,
+            volume: client.config.defaultVolume,
+            ...(nodeName && { nodeName }),
+            deaf: true,
+        });
+
+        embed.setDescription(t(client, guildId, "music.join.joined", { channel: interaction.member.voice.channel }));
+        return interaction.reply({ embeds: [embed], flags: [MessageFlags.Ephemeral] });
     },
 };

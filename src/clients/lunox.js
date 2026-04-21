@@ -16,6 +16,7 @@ class MainClient extends Client {
                 GatewayIntentBits.Guilds,
                 GatewayIntentBits.GuildVoiceStates,
                 GatewayIntentBits.GuildMessages,
+                GatewayIntentBits.DirectMessages,
                 GatewayIntentBits.MessageContent,
             ],
             partials: [Partials.Message, Partials.Channel, Partials.Reaction],
@@ -30,6 +31,7 @@ class MainClient extends Client {
         this.config = require("../settings/config.js");
         this.guildData = require("../databases/schema/guild.js");
         this.userData = require("../databases/schema/user.js");
+        this.adminLog = require("../databases/schema/adminLog.js");
         this.prefix = new Collection();
         this.aliases = new Collection();
         this.slash = new Collection();

@@ -1,36 +1,38 @@
-const { EmbedBuilder } = require('discord.js');
-const fetch = require('node-fetch');
+const { EmbedBuilder, MessageFlags } = require("discord.js");
+const fetch = require("node-fetch");
+const { getGuildSettings } = require("../../../functions/guildSettings.js");
+const { t } = require("../../../functions/t.js");
 
 module.exports = {
     name: "filmrastgele",
-    description: "Rastgele film öner",
+    description: "Rastgele film oner",
     category: "film",
     options: [
         {
             name: "tur",
-            description: "Film türü (opsiyonel)",
+            description: "Film turu (opsiyonel)",
             type: 3,
             required: false,
             choices: [
-                { name: 'Aksiyon', value: '28' },
-                { name: 'Macera', value: '12' },
-                { name: 'Animasyon', value: '16' },
-                { name: 'Komedi', value: '35' },
-                { name: 'Suç', value: '80' },
-                { name: 'Belgesel', value: '99' },
-                { name: 'Dram', value: '18' },
-                { name: 'Aile', value: '10751' },
-                { name: 'Fantastik', value: '14' },
-                { name: 'Tarih', value: '36' },
-                { name: 'Korku', value: '27' },
-                { name: 'Müzik', value: '10402' },
-                { name: 'Gizem', value: '9648' },
-                { name: 'Romantik', value: '10749' },
-                { name: 'Bilim Kurgu', value: '878' },
-                { name: 'TV Film', value: '10770' },
-                { name: 'Gerilim', value: '53' },
-                { name: 'Savaş', value: '10752' },
-                { name: 'Western', value: '37' }
+                { name: "Aksiyon", value: "28" },
+                { name: "Macera", value: "12" },
+                { name: "Animasyon", value: "16" },
+                { name: "Komedi", value: "35" },
+                { name: "Suc", value: "80" },
+                { name: "Belgesel", value: "99" },
+                { name: "Dram", value: "18" },
+                { name: "Aile", value: "10751" },
+                { name: "Fantastik", value: "14" },
+                { name: "Tarih", value: "36" },
+                { name: "Korku", value: "27" },
+                { name: "Müzik", value: "10402" },
+                { name: "Gizem", value: "9648" },
+                { name: "Romantik", value: "10749" },
+                { name: "Bilim Kurgu", value: "878" },
+                { name: "TV Film", value: "10770" },
+                { name: "Gerilim", value: "53" },
+                { name: "Savas", value: "10752" },
+                { name: "Western", value: "37" },
             ],
         },
     ],
@@ -45,48 +47,45 @@ module.exports = {
     },
     devOnly: false,
     run: async (client, interaction) => {
+        const guildId = interaction.guildId;
         const embed = new EmbedBuilder().setColor(client.config.embedColor);
-        const turId = interaction.options.getString("tur");
+        const genreId = interaction.options.getString("tur");
 
         try {
-            // Rastgele sayfa numarası (1-500 arası)
             const randomPage = Math.floor(Math.random() * 500) + 1;
-            
-            // API URL'ini oluştur
-            let apiUrl = `https://api.themoviedb.org/3/discover/movie?api_key=${process.env.TMDB_API_KEY}&language=tr-TR&sort_by=popularity.desc&page=${randomPage}`;
-            
-            // Eğer tür seçilmişse, URL'e ekle
-            if (turId) {
-                apiUrl += `&with_genres=${turId}`;
-            }
-
-            const response = await fetch(apiUrl);
+            const genreQuery = genreId ? `&with_genres=${genreId}` : "";
+            const response = await fetch(
+                `https://api.themoviedb.org/3/discover/movie?api_key=${process.env.TMDB_API_KEY}&language=${getMovieLanguage(client, guildId)}&sort_by=popularity.desc&page=${randomPage}${genreQuery}`,
+            );
             const data = await response.json();
 
             if (!data.results || data.results.length === 0) {
-                embed.setDescription('Film bulunamadı!');
+                embed.setDescription(t(client, guildId, "film.notFound"));
                 return interaction.reply({ embeds: [embed] });
             }
 
-            // Rastgele bir film seç
-            const randomIndex = Math.floor(Math.random() * data.results.length);
-            const film = data.results[randomIndex];
+            const film = data.results[Math.floor(Math.random() * data.results.length)];
 
-            embed.setTitle(film.title)
-                .setDescription(film.overview || 'Açıklama bulunamadı.')
+            embed
+                .setTitle(film.title || film.original_title)
+                .setDescription(film.overview || t(client, guildId, "film.noDescription"))
                 .addFields(
-                    { name: 'Yayın Tarihi', value: film.release_date || 'Belirtilmemiş', inline: true },
-                    { name: 'Puan', value: `⭐ ${film.vote_average}/10`, inline: true },
-                    { name: 'Oylama Sayısı', value: film.vote_count.toString(), inline: true }
+                    { name: t(client, guildId, "film.releaseDate"), value: film.release_date || t(client, guildId, "film.notSpecified"), inline: true },
+                    { name: t(client, guildId, "film.rating"), value: `${Number(film.vote_average || 0).toFixed(1)}/10`, inline: true },
+                    { name: t(client, guildId, "film.voteCount"), value: String(film.vote_count || 0), inline: true },
                 )
-                .setImage(`https://image.tmdb.org/t/p/w500${film.poster_path}`)
+                .setImage(film.poster_path ? `https://image.tmdb.org/t/p/w500${film.poster_path}` : null)
                 .setFooter({ text: `ID: ${film.id}` });
 
             return interaction.reply({ embeds: [embed] });
         } catch (error) {
-            console.error("Rastgele film hatası:", error);
-            embed.setDescription(`Film önerilirken bir hata oluştu: ${error.message}`);
-            return interaction.reply({ embeds: [embed], ephemeral: true });
+            console.error("Random movie error:", error);
+            embed.setDescription(t(client, guildId, "film.randomError", { error: error.message }));
+            return interaction.reply({ embeds: [embed], flags: [MessageFlags.Ephemeral] });
         }
     },
-}; 
+};
+
+function getMovieLanguage(client, guildId) {
+    return getGuildSettings(client, guildId).language === "en" ? "en-US" : "tr-TR";
+}

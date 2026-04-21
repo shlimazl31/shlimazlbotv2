@@ -1,8 +1,10 @@
-const { EmbedBuilder, MessageFlags } = require("discord.js");
+const { MessageFlags } = require("discord.js");
+const { createStatusEmbed } = require("../../../functions/createResponseEmbed.js");
+const { t } = require("../../../functions/t.js");
 
 module.exports = {
     name: "clear",
-    description: "Sırayı temizle",
+    description: "Sirayi temizle",
     category: "music",
     permissions: {
         bot: [],
@@ -15,17 +17,19 @@ module.exports = {
     },
     devOnly: false,
     run: async (client, interaction, player) => {
-        const embed = new EmbedBuilder().setColor(client.config.embedColor);
+        const embed = createStatusEmbed(client, {
+            tone: "info",
+            title: t(client, interaction.guildId, "music.clear.title"),
+            guildId: interaction.guildId,
+        });
 
         if (player.queue.isEmpty) {
-            embed.setDescription(`Sıra zaten boş.`);
-
+            embed.setDescription(t(client, interaction.guildId, "music.clear.alreadyEmpty"));
             return interaction.reply({ embeds: [embed], flags: [MessageFlags.Ephemeral] });
         }
 
         player.queue.clear();
-
-        embed.setDescription(`Sıra temizlendi.`);
+        embed.setDescription(t(client, interaction.guildId, "music.clear.done"));
 
         return interaction.reply({ embeds: [embed], flags: [MessageFlags.Ephemeral] });
     },

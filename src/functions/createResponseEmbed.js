@@ -1,15 +1,18 @@
-const { EmbedBuilder } = require("discord.js");
+﻿const { EmbedBuilder } = require("discord.js");
+const { getGuildThemeColor } = require("./guildSettings.js");
+const { getBotVersion } = require("./getBotVersion.js");
+const { t } = require("./t.js");
 
 const TONES = {
     success: { prefix: "Tamam", accent: "Islem basarili", color: 0x2ecc71 },
     error: { prefix: "Hata", accent: "Mudahale gerekiyor", color: 0xe74c3c },
     warning: { prefix: "Uyari", accent: "Kontrol et", color: 0xf39c12 },
-    info: { prefix: "Bilgi", accent: "Guncel durum", color: 0x4f7cff },
+    info: { prefix: "Bilgi", accent: "Güncel durum", color: 0x4f7cff },
     media: { prefix: "Now Playing", accent: "Canli oturum", color: 0x5865f2 },
 };
 
 function createBaseEmbed(client, options = {}) {
-    const embed = new EmbedBuilder().setColor(options.color || client.config.embedColor);
+    const embed = new EmbedBuilder().setColor(options.color || getGuildThemeColor(client, options.guildId, client.config.embedColor));
 
     if (options.author) embed.setAuthor(options.author);
     if (options.title) embed.setTitle(options.title);
@@ -31,7 +34,8 @@ function createStatusEmbed(client, options = {}) {
     const eyebrow = options.eyebrow || tone.accent;
 
     return createBaseEmbed(client, {
-        color: options.color || tone.color,
+        color: options.color || getGuildThemeColor(client, options.guildId, tone.color),
+        guildId: options.guildId,
         author: options.author || {
             name: `${title} | ${eyebrow}`,
             iconURL: client.user.displayAvatarURL(),
@@ -42,7 +46,7 @@ function createStatusEmbed(client, options = {}) {
         fields: options.fields,
         footer:
             options.footer || {
-                text: `${client.user.username} komut yaniti`,
+                text: `${t(client, options.guildId, "common.commandResponse", { bot: client.user.username })} | v${getBotVersion()}`,
                 iconURL: client.user.displayAvatarURL(),
             },
         thumbnail: options.thumbnail,
@@ -56,3 +60,4 @@ module.exports = {
     createBaseEmbed,
     createStatusEmbed,
 };
+

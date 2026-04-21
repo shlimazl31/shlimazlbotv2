@@ -1,26 +1,23 @@
-const { EmbedBuilder } = require("discord.js");
+const { createStatusEmbed } = require("../../../functions/createResponseEmbed.js");
+const { t } = require("../../../functions/t.js");
 
 module.exports = async (client, player) => {
     if (!player) return;
 
     const guild = await client.guilds.cache.get(player.guildId);
+    if (guild) console.error(`[ERROR] Song got stuck from ${guild.name} (${guild.id})`);
 
-    console.error(`[ERROR] Song got stuck from ${guild.name} (${guild.id})`);
-
-    if (player.message) player.message.delete().catch((e) => {});
+    if (player.message) player.message.delete().catch(() => null);
 
     const channel = await client.channels.cache.get(player.textId);
-    const embed = new EmbedBuilder().setColor(client.data.get(`color_${player.guildId}`));
+    const descriptionKey = !player.queue.isEmpty ? "playerEvents.stuckSkip" : "playerEvents.stuckStop";
+    const embed = createStatusEmbed(client, {
+        tone: "error",
+        title: "Player",
+        guildId: player.guildId,
+        description: t(client, player.guildId, descriptionKey),
+    });
 
-    if (!player.queue.isEmpty) {
-        embed.setDescription(`Song got stuck. Skipping to the next song...`);
-
-        if (channel) await channel.send({ embeds: [embed] });
-    } else {
-        embed.setDescription(`Song got stuck and the queue is empty. Stopping the player...`);
-
-        if (channel) await channel.send({ embeds: [embed] });
-    }
-
+    if (channel) await channel.send({ embeds: [embed] });
     return player.skip();
 };

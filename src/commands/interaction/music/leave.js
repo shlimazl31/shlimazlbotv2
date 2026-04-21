@@ -1,4 +1,6 @@
-const { EmbedBuilder, MessageFlags } = require("discord.js");
+const { MessageFlags } = require("discord.js");
+const { createStatusEmbed } = require("../../../functions/createResponseEmbed.js");
+const { t } = require("../../../functions/t.js");
 
 module.exports = {
     name: "leave",
@@ -17,7 +19,12 @@ module.exports = {
     run: async (client, interaction, player) => {
         player.destroy();
 
-        const embed = new EmbedBuilder().setColor(client.config.embedColor).setDescription(`Ses kanalından ayrılıyor...`);
+        const embed = createStatusEmbed(client, {
+            tone: "info",
+            title: t(client, interaction.guildId, "music.leave.title"),
+            guildId: interaction.guildId,
+            description: t(client, interaction.guildId, "music.leave.leaving"),
+        });
 
         return interaction.reply({ embeds: [embed], flags: [MessageFlags.Ephemeral] });
     },

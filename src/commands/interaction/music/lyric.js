@@ -1,6 +1,7 @@
-const { EmbedBuilder, MessageFlags, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require("discord.js");
+﻿const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require("discord.js");
 const { find } = require("llyrics");
 const gsearch = require("google-search-url");
+const { t } = require("../../../functions/t.js");
 
 module.exports = {
     name: "lyric",
@@ -17,66 +18,41 @@ module.exports = {
     },
     devOnly: false,
     run: async (client, interaction, player) => {
+        const guildId = interaction.guildId;
         const embed = new EmbedBuilder().setColor(client.config.embedColor);
-        const formatText = (text) =>
-            text
-                .replace(/\(.*?\)/gi, "")
-                .replace(/\s/g, "-")
-                .replace(/['",]/g, "")
-                .replace(/ - Topic$/, "")
-                .toLowerCase();
-
         const track = player.queue.current;
         const trackTitle = formatText(track.title);
         const trackArtist = formatText(track.author);
+        const loadingEmbed = new EmbedBuilder().setColor(client.config.embedColor).setDescription(t(client, guildId, "music.lyric.loading"));
+        await interaction.reply({ embeds: [loadingEmbed] });
         const lyricText = await lyricFind(client, trackTitle, trackArtist);
-        const loadingEmbed = new EmbedBuilder().setColor(client.config.embedColor).setDescription(`Lütfen bekleyin...!`);
-        const loadingMsg = await interaction.reply({ embeds: [loadingEmbed] });
 
         if (!lyricText) {
-            embed.setDescription(`Sözler bulunamadı. Lütfen daha sonra tekrar deneyin.`);
-
-            if (loadingMsg) {
-                return loadingMsg.edit({ embeds: [embed] });
-            } else {
-                return interaction.reply({ embeds: [embed] });
-            }
+            embed.setDescription(t(client, guildId, "music.lyric.notFound"));
+            return interaction.editReply({ embeds: [embed] });
         }
+
+        embed
+            .setAuthor({
+                name: t(client, guildId, "music.lyric.author", { bot: client.user.username }),
+                iconURL: client.user.displayAvatarURL(),
+            })
+            .setThumbnail(track.artworkUrl)
+            .setDescription(lyricText.substring(0, 4096));
 
         if (lyricText.length <= 4096) {
-            embed
-                .setAuthor({
-                    name: `${client.user.username} Şarkı Sözleri`,
-                    iconURL: client.user.displayAvatarURL(),
-                })
-                .setThumbnail(track.artworkUrl)
-                .setDescription(lyricText);
-
-            if (loadingMsg) {
-                return loadingMsg.edit({ embeds: [embed] });
-            } else {
-                return interaction.reply({ embeds: [embed] });
-            }
-        } else {
-            embed
-                .setAuthor({
-                    name: `${client.user.username} Şarkı Sözleri`,
-                    iconURL: client.user.displayAvatarURL(),
-                })
-                .setThumbnail(track.artworkUrl)
-                .setDescription(lyricText.substring(0, 4096));
-
-            const lyricUrl = gsearch.craft({ query: `${trackTitle} ${trackArtist} lyrics` }).url;
-            const lyricButton = new ActionRowBuilder().addComponents(
-                new ButtonBuilder().setURL(lyricUrl.replace("http:", "https:")).setLabel("Tam Şarkı Sözleri").setStyle(ButtonStyle.Link),
-            );
-
-            if (loadingMsg) {
-                return loadingMsg.edit({ embeds: [embed], components: [lyricButton] });
-            } else {
-                return interaction.editReply({ embeds: [embed], components: [lyricButton] });
-            }
+            return interaction.editReply({ embeds: [embed] });
         }
+
+        const lyricUrl = gsearch.craft({ query: `${trackTitle} ${trackArtist} lyrics` }).url;
+        const lyricButton = new ActionRowBuilder().addComponents(
+            new ButtonBuilder()
+                .setURL(lyricUrl.replace("http:", "https:"))
+                .setLabel(t(client, guildId, "music.lyric.fullButton"))
+                .setStyle(ButtonStyle.Link),
+        );
+
+        return interaction.editReply({ embeds: [embed], components: [lyricButton] });
     },
 };
 
@@ -89,7 +65,15 @@ async function lyricFind(client, title, author) {
         forceSearch: true,
     });
 
-    const lyricSong = response.lyrics;
-
-    return lyricSong;
+    return response.lyrics;
 }
+
+function formatText(text) {
+    return text
+        .replace(/\(.*?\)/gi, "")
+        .replace(/\s/g, "-")
+        .replace(/['",]/g, "")
+        .replace(/ - Topic$/, "")
+        .toLowerCase();
+}
+

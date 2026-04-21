@@ -1,4 +1,6 @@
-const { EmbedBuilder, MessageFlags } = require("discord.js");
+const { MessageFlags } = require("discord.js");
+const { createStatusEmbed } = require("../../../functions/createResponseEmbed.js");
+const { t } = require("../../../functions/t.js");
 
 module.exports = {
     name: "seek",
@@ -7,7 +9,7 @@ module.exports = {
     options: [
         {
             name: "time",
-            description: "Saniye cinsinden süre girin",
+            description: "Saniye cinsinden sure girin",
             type: 4,
             min_value: 0,
             required: true,
@@ -24,24 +26,26 @@ module.exports = {
     },
     devOnly: false,
     run: async (client, interaction, player) => {
-        const embed = new EmbedBuilder().setColor(client.config.embedColor);
+        const guildId = interaction.guildId;
+        const embed = createStatusEmbed(client, {
+            tone: "info",
+            title: t(client, guildId, "music.seek.title"),
+            guildId,
+        });
         const time = interaction.options.getInteger("time");
 
         if (!player.queue.current.isSeekable) {
-            embed.setDescription(`Mevcut şarkıda ilerleme yapılamaz.`);
-
+            embed.setDescription(t(client, guildId, "music.seek.notSeekable"));
             return interaction.reply({ embeds: [embed], flags: [MessageFlags.Ephemeral] });
         }
 
         if (time * 1000 > player.queue.current.duration) {
-            embed.setDescription(`Girilen süre şarkının toplam süresinden uzun.`);
-
+            embed.setDescription(t(client, guildId, "music.seek.tooLong"));
             return interaction.reply({ embeds: [embed], flags: [MessageFlags.Ephemeral] });
         }
 
         player.seek(time * 1000);
-
-        embed.setDescription(`\`${time}s\` süresine ilerletildi`);
+        embed.setDescription(t(client, guildId, "music.seek.done", { time }));
 
         return interaction.reply({ embeds: [embed], flags: [MessageFlags.Ephemeral] });
     },

@@ -1,6 +1,6 @@
 {
   "name": "Shlimazl",
-  "version": "3.0.24",
+  "version": "3.20.3",
   "description": "Shlimazlbot by @Shlimazl31",
   "main": "src/index.js",
   "scripts": {
@@ -27,6 +27,7 @@
     "node-fetch2": "1.6.3",
     "pretty-ms": "^9.3.0",
     "rainlink": "^1.2.9",
+    "rainlink-spotify": "^1.0.5",
     "rainlink-voice": "^1.0.1"
   },
   "devDependencies": {

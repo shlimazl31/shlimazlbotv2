@@ -1,4 +1,5 @@
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ChannelType, PermissionFlagsBits, MessageFlags } = require("discord.js");
+const { t } = require("../../../functions/t.js");
 
 function createTicketChannelName(user) {
     const slug = user.username
@@ -24,38 +25,38 @@ module.exports = async (client, interaction) => {
             permissionOverwrites: [
                 {
                     id: interaction.guild.id,
-                    deny: [PermissionFlagsBits.ViewChannel]
+                    deny: [PermissionFlagsBits.ViewChannel],
                 },
                 {
                     id: interaction.user.id,
-                    allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory]
+                    allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory],
                 },
                 {
                     id: client.user.id,
-                    allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory]
-                }
-            ]
+                    allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory],
+                },
+            ],
         });
 
         const ticketEmbed = new EmbedBuilder()
             .setColor(client.config.embedColor)
-            .setTitle("Ticket Olusturuldu")
-            .setDescription(`Merhaba ${interaction.user}, destek talebiniz olusturuldu. Lutfen sorununuzu detayli bir sekilde anlatin.`)
-            .setFooter({ text: `${interaction.guild.name} | Ticket Sistemi` });
+            .setTitle(t(client, interaction.guildId, "ticket.createdTitle"))
+            .setDescription(t(client, interaction.guildId, "ticket.createdDescription", { user: interaction.user }))
+            .setFooter({ text: t(client, interaction.guildId, "ticket.footer", { guild: interaction.guild.name }) });
 
         const row = new ActionRowBuilder().addComponents(
             new ButtonBuilder()
                 .setCustomId("close_ticket")
-                .setLabel("Ticket'i Kapat")
-                .setEmoji("🔒")
-                .setStyle(ButtonStyle.Danger)
+                .setLabel(t(client, interaction.guildId, "ticket.closeLabel"))
+                .setEmoji("\uD83D\uDD12")
+                .setStyle(ButtonStyle.Danger),
         );
 
         await ticketChannel.send({ embeds: [ticketEmbed], components: [row] });
 
         const successEmbed = new EmbedBuilder()
             .setColor(client.config.embedColor)
-            .setDescription(`Ticket kanaliniz olusturuldu: ${ticketChannel}`);
+            .setDescription(t(client, interaction.guildId, "ticket.createdSuccess", { channel: ticketChannel }));
 
         await interaction.reply({ embeds: [successEmbed], flags: [MessageFlags.Ephemeral] });
     }
@@ -66,7 +67,7 @@ module.exports = async (client, interaction) => {
 
         const closeEmbed = new EmbedBuilder()
             .setColor(client.config.embedColor)
-            .setDescription("Bu ticket 5 saniye icinde kapatilacak...");
+            .setDescription(t(client, interaction.guildId, "ticket.closing"));
 
         await interaction.reply({ embeds: [closeEmbed] });
 

@@ -1,28 +1,30 @@
-const { EmbedBuilder, MessageFlags } = require('discord.js');
+const { MessageFlags } = require("discord.js");
+const { createStatusEmbed } = require("../../../functions/createResponseEmbed.js");
+const { t } = require("../../../functions/t.js");
 
 module.exports = {
     name: "dj",
-    description: "DJ modunu ve rolünü ayarla",
+    description: "DJ modunu ve rolunu ayarla",
     category: "music",
     options: [
         {
             name: "action",
-            description: "Yapılacak işlem",
+            description: "Yapilacak islem",
             type: 3,
             required: true,
             choices: [
-                { name: "Aç/Kapat", value: "toggle" },
+                { name: "Ac/Kapat", value: "toggle" },
                 { name: "Rol Ayarla", value: "setrole" },
-                { name: "Rol Kaldır", value: "removerole" },
-                { name: "Durum", value: "status" }
-            ]
+                { name: "Rol Kaldir", value: "removerole" },
+                { name: "Durum", value: "status" },
+            ],
         },
         {
             name: "role",
-            description: "DJ rolü",
+            description: "DJ rolu",
             type: 8,
-            required: false
-        }
+            required: false,
+        },
     ],
     permissions: {
         bot: [],
@@ -34,49 +36,48 @@ module.exports = {
         current: false,
     },
     devOnly: false,
-    run: async (client, interaction, player) => {
-        const embed = new EmbedBuilder().setColor(client.config.embedColor);
-        
-        // Eski verileri kontrol et ve güncelle
-        let guildData = client.data.get(`guildData_${interaction.guildId}`);
-        if (!guildData) {
-            guildData = {};
-        }
-        if (!guildData.dj) {
-            guildData.dj = { status: false, role: null };
-        }
-        
+    run: async (client, interaction) => {
+        const guildId = interaction.guildId;
+        const embed = createStatusEmbed(client, {
+            tone: "info",
+            title: t(client, guildId, "music.dj.title"),
+            guildId,
+        });
+        const guildData = client.data.get(`guildData_${guildId}`) || { id: guildId };
+
+        if (!guildData.dj) guildData.dj = { status: false, role: null };
+
         const action = interaction.options.getString("action");
 
         switch (action) {
             case "toggle":
                 guildData.dj.status = !guildData.dj.status;
-                embed.setDescription(`DJ modu \`${guildData.dj.status ? "etkinleştirildi" : "devre dışı bırakıldı"}\`.`);
+                embed.setDescription(t(client, guildId, guildData.dj.status ? "music.dj.enabled" : "music.dj.disabled"));
                 break;
-
-            case "setrole":
+            case "setrole": {
                 const role = interaction.options.getRole("role");
                 if (!role) {
-                    embed.setDescription("Lütfen bir rol belirtin.");
+                    embed.setDescription(t(client, guildId, "music.dj.needRole"));
                     return interaction.reply({ embeds: [embed], flags: [MessageFlags.Ephemeral] });
                 }
-                guildData.dj.role = role.id;
-                embed.setDescription(`${role} rolü DJ rolü olarak ayarlandı.`);
-                break;
 
+                guildData.dj.role = role.id;
+                embed.setDescription(t(client, guildId, "music.dj.roleSet", { role }));
+                break;
+            }
             case "removerole":
                 guildData.dj.role = null;
-                embed.setDescription("DJ rolü kaldırıldı.");
+                embed.setDescription(t(client, guildId, "music.dj.roleRemoved"));
                 break;
-
-            case "status":
-                const status = guildData.dj.status ? "Aktif" : "Devre Dışı";
-                const roleName = guildData.dj.role ? `<@&${guildData.dj.role}>` : "Ayarlanmamış";
-                embed.setDescription(`**DJ Sistemi Durumu**\n\nMod: \`${status}\`\nRol: ${roleName}`);
+            case "status": {
+                const status = guildData.dj.status ? t(client, guildId, "music.dj.active") : t(client, guildId, "music.dj.inactive");
+                const roleName = guildData.dj.role ? `<@&${guildData.dj.role}>` : t(client, guildId, "music.dj.notConfigured");
+                embed.setDescription(`**${t(client, guildId, "music.dj.statusTitle")}**\n\n${t(client, guildId, "music.dj.mode")}: \`${status}\`\n${t(client, guildId, "music.dj.role")}: ${roleName}`);
                 break;
+            }
         }
 
-        client.data.set(`guildData_${interaction.guildId}`, guildData);
+        client.data.set(`guildData_${guildId}`, guildData);
         return interaction.reply({ embeds: [embed], flags: [MessageFlags.Ephemeral] });
     },
-}; 
+};

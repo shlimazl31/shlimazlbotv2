@@ -1,4 +1,6 @@
-const { EmbedBuilder, MessageFlags } = require("discord.js");
+const { MessageFlags } = require("discord.js");
+const { createStatusEmbed } = require("../../../functions/createResponseEmbed.js");
+const { t } = require("../../../functions/t.js");
 
 module.exports = {
     name: "previous",
@@ -15,17 +17,20 @@ module.exports = {
     },
     devOnly: false,
     run: async (client, interaction, player) => {
-        const embed = new EmbedBuilder().setColor(client.config.embedColor);
+        const guildId = interaction.guildId;
+        const embed = createStatusEmbed(client, {
+            tone: "info",
+            title: t(client, guildId, "music.previous.title"),
+            guildId,
+        });
 
-        if (!player.queue.previous) {
-            embed.setDescription(`Önceki şarkı bulunamadı.`);
-
+        if (!player.queue.previous?.length) {
+            embed.setDescription(t(client, guildId, "music.previous.notFound"));
             return interaction.reply({ embeds: [embed], flags: [MessageFlags.Ephemeral] });
         }
 
         player.previous();
-
-        embed.setDescription(`Önceki şarkı çalınıyor.`);
+        embed.setDescription(t(client, guildId, "music.previous.playing"));
 
         return interaction.reply({ embeds: [embed], flags: [MessageFlags.Ephemeral] });
     },

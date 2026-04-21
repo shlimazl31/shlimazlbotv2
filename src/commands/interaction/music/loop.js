@@ -1,6 +1,7 @@
 const { MessageFlags } = require("discord.js");
 const { createStatusEmbed } = require("../../../functions/createResponseEmbed.js");
 const { refreshNowPlayingMessage } = require("../../../functions/createNowPlayingCard.js");
+const { t } = require("../../../functions/t.js");
 
 module.exports = {
     name: "loop",
@@ -13,8 +14,8 @@ module.exports = {
             type: 3,
             required: true,
             choices: [
-                { name: "kapali", value: "none" },
-                { name: "sarki", value: "song" },
+                { name: "kapalı", value: "none" },
+                { name: "şarkı", value: "song" },
                 { name: "kuyruk", value: "queue" },
             ],
         },
@@ -30,12 +31,13 @@ module.exports = {
     },
     devOnly: false,
     run: async (client, interaction, player) => {
-        const embed = createStatusEmbed(client, { tone: "info", title: "Dongu" });
+        const guildId = interaction.guildId;
+        const embed = createStatusEmbed(client, { tone: "info", title: t(client, guildId, "music.loop.title"), guildId });
         const mode = interaction.options.getString("mode");
 
-        if (mode === "none") embed.setDescription("Dongu modu `kapali` olarak ayarlandi.");
-        if (mode === "song") embed.setDescription("Dongu modu `sarki` olarak ayarlandi.");
-        if (mode === "queue") embed.setDescription("Dongu modu `kuyruk` olarak ayarlandi.");
+        if (mode === "none") embed.setDescription(t(client, guildId, "music.loop.none"));
+        if (mode === "song") embed.setDescription(t(client, guildId, "music.loop.song"));
+        if (mode === "queue") embed.setDescription(t(client, guildId, "music.loop.queue"));
 
         player.setLoop(mode);
         await refreshNowPlayingMessage(client, player);

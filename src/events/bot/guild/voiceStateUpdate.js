@@ -1,5 +1,8 @@
 const { PermissionsBitField, EmbedBuilder } = require("discord.js");
+const { canSendNotice } = require("../../../functions/noticeCooldown.js");
 const { t } = require("../../../functions/t.js");
+
+const LEAVE_NOTICE_COOLDOWN_MS = 10 * 60 * 1000;
 
 module.exports = async (client, oldState, newState) => {
     if (newState.channelId && newState.channel.type == 13 && newState.guild.members.me.voice.suppress) {
@@ -61,6 +64,7 @@ function scheduleLeaveCheck(client, guild, player) {
 
         const leaveChannel = client.channels.cache.get(activePlayer.textId);
         if (!leaveChannel?.send) return;
+        if (!canSendNotice(client, `${guild.id}:voice-leave`, LEAVE_NOTICE_COOLDOWN_MS)) return;
 
         const timeoutEmbed = new EmbedBuilder()
             .setColor(client.config.embedColor)

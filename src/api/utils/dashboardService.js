@@ -165,7 +165,9 @@ async function getDashboardProfile(cluster, userId) {
                     iconUrl: guild.icon ? `https://cdn.discordapp.com/icons/${guild.id}/${guild.icon}.png?size=128` : null,
                 }));
             const isOwner = client.config.owner === context.userId || client.config.dev.includes(context.userId);
-            const userPremium = normalizeUserPremium(userDoc?.premium || {});
+            const storedPremium = normalizeUserPremium(userDoc?.premium || {});
+            const patreonPremium = await getPatreonRolePremium(client, context.userId);
+            const userPremium = patreonPremium.active ? patreonPremium : storedPremium;
 
             return {
                 user: {
@@ -204,6 +206,39 @@ async function getDashboardProfile(cluster, userId) {
                 };
             }
 
+            async function getPatreonRolePremium(client, userId) {
+                const guildId = process.env.PATREON_DISCORD_GUILD_ID || process.env.PATREON_GUILD_ID;
+                const plusRoleId = process.env.PATREON_PLUS_ROLE_ID;
+                const proRoleId = process.env.PATREON_PRO_ROLE_ID;
+                if (!guildId || (!plusRoleId && !proRoleId)) return { active: false, plan: "free", features: [], source: null };
+
+                const guild = client.guilds.cache.get(guildId) || await client.guilds.fetch(guildId).catch(() => null);
+                if (!guild) return { active: false, plan: "free", features: [], source: null };
+
+                const member = guild.members.cache.get(userId) || await guild.members.fetch(userId).catch(() => null);
+                if (!member) return { active: false, plan: "free", features: [], source: null };
+
+                const roles = member.roles?.cache;
+                const hasRole = (roleId) => Boolean(roleId && (roles?.has?.(roleId) || member.roles?.includes?.(roleId)));
+                const plan = hasRole(proRoleId) ? "pro" : hasRole(plusRoleId) ? "plus" : null;
+                if (!plan) return { active: false, plan: "free", features: [], source: null };
+
+                return {
+                    active: true,
+                    plan,
+                    expiresAt: null,
+                    features: getPremiumFeatures({ active: true, features: [] }, plan),
+                    source: "patreon_discord_role",
+                    grantedAt: null,
+                    revokedAt: null,
+                    payment: {
+                        provider: "patreon",
+                        status: "active",
+                        scope: "user",
+                    },
+                };
+            }
+
             function getPremiumFeatures(premium = {}, plan = premium.plan) {
                 const planFeatures = context.planFeatures[plan] || [];
                 const extraFeatures = Array.isArray(premium.features) ? premium.features : [];
@@ -226,7 +261,9 @@ async function getDashboardGuild(cluster, userId, guildId) {
 
             const guild = client.guilds.cache.get(context.guildId);
             let doc = await client.guildData.findOne({ id: context.guildId }).lean();
-            const accountPremium = normalizePremium(userDoc?.premium || {});
+            const storedAccountPremium = normalizePremium(userDoc?.premium || {});
+            const patreonPremium = await getPatreonRolePremium(client, context.userId);
+            const accountPremium = patreonPremium.active ? patreonPremium : storedAccountPremium;
             const premium = guild ? accountPremium : normalizePremium();
 
             return {
@@ -306,11 +343,11 @@ async function getDashboardGuild(cluster, userId, guildId) {
                         channelId: settings.miniPlayer?.channelId || null,
                     },
                     playlist: {
-                        enabled: settings.playlist?.enabled !== false,
+                        enabled: Boolean(settings.playlist?.enabled),
                         maxPlaylists: clampNumber(settings.playlist?.maxPlaylists, 1, 50, 10),
                     },
                     sleepTimer: {
-                        enabled: settings.sleepTimer?.enabled !== false,
+                        enabled: Boolean(settings.sleepTimer?.enabled),
                         maxMinutes: clampNumber(settings.sleepTimer?.maxMinutes, 1, 1440, 240),
                     },
                 };
@@ -391,6 +428,39 @@ async function getDashboardGuild(cluster, userId, guildId) {
                     features: active ? getPremiumFeatures(rawPremium) : [],
                     source: rawPremium.source || null,
                     trial: rawPremium.trial || null,
+                    payment: rawPremium.payment || null,
+                };
+            }
+
+            async function getPatreonRolePremium(client, userId) {
+                const guildId = process.env.PATREON_DISCORD_GUILD_ID || process.env.PATREON_GUILD_ID;
+                const plusRoleId = process.env.PATREON_PLUS_ROLE_ID;
+                const proRoleId = process.env.PATREON_PRO_ROLE_ID;
+                if (!guildId || (!plusRoleId && !proRoleId)) return { active: false, plan: "free", features: [], source: null };
+
+                const guild = client.guilds.cache.get(guildId) || await client.guilds.fetch(guildId).catch(() => null);
+                if (!guild) return { active: false, plan: "free", features: [], source: null };
+
+                const member = guild.members.cache.get(userId) || await guild.members.fetch(userId).catch(() => null);
+                if (!member) return { active: false, plan: "free", features: [], source: null };
+
+                const roles = member.roles?.cache;
+                const hasRole = (roleId) => Boolean(roleId && (roles?.has?.(roleId) || member.roles?.includes?.(roleId)));
+                const plan = hasRole(proRoleId) ? "pro" : hasRole(plusRoleId) ? "plus" : null;
+                if (!plan) return { active: false, plan: "free", features: [], source: null };
+
+                return {
+                    active: true,
+                    plan,
+                    expiresAt: null,
+                    features: getPremiumFeatures({ active: true, plan, features: [] }),
+                    source: "patreon_discord_role",
+                    trial: null,
+                    payment: {
+                        provider: "patreon",
+                        status: "active",
+                        scope: "user",
+                    },
                 };
             }
 
@@ -419,7 +489,9 @@ async function updateDashboardGuildSettings(cluster, userId, guildId, patch) {
             const settings = normalizeSettings(doc?.settings || {});
             const dj = normalizeDj(doc?.dj || {});
             const reconnect = normalizeReconnect(doc?.reconnect || {});
-            const premium = normalizePremium(userDoc?.premium || {});
+            const storedPremium = normalizePremium(userDoc?.premium || {});
+            const patreonPremium = await getPatreonRolePremium(client, context.userId);
+            const premium = patreonPremium.active ? patreonPremium : storedPremium;
             const features = getPremiumFeatures(premium, context.planFeatures);
 
             if (context.patch.playerMode === "rich" && !features.includes("rich_player")) {
@@ -486,7 +558,7 @@ async function updateDashboardGuildSettings(cluster, userId, guildId, patch) {
                 for (const roleId of roleIds) {
                     const role = guild?.roles.cache.get(roleId);
                     if (!role || role.id === guild.id || role.managed) {
-                        return { ok: false, status: 400, error: "GeÃ§erli izinli roller seÃ§melisin." };
+                        return { ok: false, status: 400, error: "Geçerli izinli roller seçmelisin." };
                     }
                 }
 
@@ -511,7 +583,7 @@ async function updateDashboardGuildSettings(cluster, userId, guildId, patch) {
                 } else {
                     const channel = client.guilds.cache.get(context.guildId)?.channels.cache.get(channelId);
                     if (!channel || typeof channel.isTextBased !== "function" || !channel.isTextBased() || channel.isThread?.()) {
-                        return { ok: false, status: 400, error: "Mini player iÃ§in geÃ§erli bir metin kanalÄ± seÃ§melisin." };
+                        return { ok: false, status: 400, error: "Mini player için geçerli bir metin kanalı seçmelisin." };
                     }
 
                     settings.miniPlayer.channelId = channelId;
@@ -520,7 +592,7 @@ async function updateDashboardGuildSettings(cluster, userId, guildId, patch) {
             }
 
             if (settings.miniPlayer.enabled && !settings.miniPlayer.channelId) {
-                return { ok: false, status: 400, error: "Mini player aÃ§Ä±kken bir metin kanalÄ± seÃ§melisin." };
+                return { ok: false, status: 400, error: "Mini player açıkken bir metin kanalı seçmelisin." };
             }
 
             if (Object.prototype.hasOwnProperty.call(context.patch, "reconnectEnabled")) {
@@ -540,7 +612,7 @@ async function updateDashboardGuildSettings(cluster, userId, guildId, patch) {
                 } else {
                     const channel = client.guilds.cache.get(context.guildId)?.channels.cache.get(channelId);
                     if (!channel || typeof channel.isTextBased !== "function" || !channel.isTextBased() || channel.isThread?.()) {
-                        return { ok: false, status: 400, error: "24/7 metin kanalÄ± iÃ§in geÃ§erli bir kanal seÃ§melisin." };
+                        return { ok: false, status: 400, error: "24/7 metin kanalı için geçerli bir kanal seçmelisin." };
                     }
 
                     reconnect.text = channelId;
@@ -555,7 +627,7 @@ async function updateDashboardGuildSettings(cluster, userId, guildId, patch) {
                 } else {
                     const channel = client.guilds.cache.get(context.guildId)?.channels.cache.get(channelId);
                     if (!channel || ![2, 13].includes(channel.type)) {
-                        return { ok: false, status: 400, error: "24/7 modu iÃ§in geÃ§erli bir ses kanalÄ± seÃ§melisin." };
+                        return { ok: false, status: 400, error: "24/7 modu için geçerli bir ses kanalı seçmelisin." };
                     }
 
                     reconnect.voice = channelId;
@@ -563,7 +635,7 @@ async function updateDashboardGuildSettings(cluster, userId, guildId, patch) {
             }
 
             if (reconnect.status && (!reconnect.text || !reconnect.voice)) {
-                return { ok: false, status: 400, error: "24/7 modu aÃ§Ä±kken metin ve ses kanalÄ± seÃ§melisin." };
+                return { ok: false, status: 400, error: "24/7 modu açıkken metin ve ses kanalı seçmelisin." };
             }
 
             if (Object.prototype.hasOwnProperty.call(context.patch, "playlistEnabled")) {
@@ -633,11 +705,11 @@ async function updateDashboardGuildSettings(cluster, userId, guildId, patch) {
                         messageId: settings.miniPlayer?.messageId || null,
                     },
                     playlist: {
-                        enabled: settings.playlist?.enabled !== false,
+                        enabled: Boolean(settings.playlist?.enabled),
                         maxPlaylists: clampNumber(settings.playlist?.maxPlaylists, 1, 50, 10),
                     },
                     sleepTimer: {
-                        enabled: settings.sleepTimer?.enabled !== false,
+                        enabled: Boolean(settings.sleepTimer?.enabled),
                         maxMinutes: clampNumber(settings.sleepTimer?.maxMinutes, 1, 1440, 240),
                     },
                 };
@@ -672,6 +744,24 @@ async function updateDashboardGuildSettings(cluster, userId, guildId, patch) {
                     plan: active ? rawPremium.plan || "plus" : "free",
                     features: active && Array.isArray(rawPremium.features) ? rawPremium.features : [],
                 };
+            }
+
+            async function getPatreonRolePremium(client, userId) {
+                const guildId = process.env.PATREON_DISCORD_GUILD_ID || process.env.PATREON_GUILD_ID;
+                const plusRoleId = process.env.PATREON_PLUS_ROLE_ID;
+                const proRoleId = process.env.PATREON_PRO_ROLE_ID;
+                if (!guildId || (!plusRoleId && !proRoleId)) return { active: false, plan: "free", features: [] };
+
+                const guild = client.guilds.cache.get(guildId) || await client.guilds.fetch(guildId).catch(() => null);
+                if (!guild) return { active: false, plan: "free", features: [] };
+
+                const member = guild.members.cache.get(userId) || await guild.members.fetch(userId).catch(() => null);
+                if (!member) return { active: false, plan: "free", features: [] };
+
+                const roles = member.roles?.cache;
+                const hasRole = (roleId) => Boolean(roleId && (roles?.has?.(roleId) || member.roles?.includes?.(roleId)));
+                const plan = hasRole(proRoleId) ? "pro" : hasRole(plusRoleId) ? "plus" : null;
+                return plan ? { active: true, plan, features: [] } : { active: false, plan: "free", features: [] };
             }
 
             function getPremiumFeatures(premium, planFeatures) {
@@ -976,13 +1066,13 @@ async function applyPaymentWebhook(cluster, normalizedEvent) {
                 expiresAt,
                 features: [],
                 source: event.provider,
-                grantedBy: event.userId || "lemonsqueezy",
+                grantedBy: event.userId || event.provider || "payment",
                 grantedAt: now,
-                revokedBy: active ? null : "lemonsqueezy",
+                revokedBy: active ? null : event.provider || "payment",
                 revokedAt: active ? null : now,
                 trial: {
                     claimedBy: event.userId || null,
-                    claimedAt: event.attributes?.trial_ends_at ? now : null,
+                    claimedAt: hasAnyDate(event.attributes?.trial_ends_at, event.attributes?.trialing_to) ? now : null,
                     onboardingVersion: context.onboardingVersion,
                 },
                 payment: {
@@ -1026,16 +1116,33 @@ async function applyPaymentWebhook(cluster, normalizedEvent) {
 
             function getPremiumExpiry(event) {
                 if (event.plan === "lifetime") return null;
-                const value = event.attributes?.ends_at || event.attributes?.renews_at || event.attributes?.trial_ends_at;
+                const value = getPremiumExpiryValue(event);
                 const date = value ? new Date(value) : null;
                 if (date && !Number.isNaN(date.getTime())) return date;
                 if (event.eventName === "order_created") return new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
                 return null;
             }
 
+            function getPremiumExpiryValue(event) {
+                return event.attributes?.ends_at
+                    || event.attributes?.renews_at
+                    || event.attributes?.trial_ends_at
+                    || event.attributes?.trialing_to
+                    || event.attributes?.next_billed_at
+                    || event.attributes?.current_billing_period?.ends_at
+                    || event.attributes?.billing_period?.ends_at;
+            }
+
             function hasFutureDate(value) {
                 const date = value ? new Date(value) : null;
                 return Boolean(date && !Number.isNaN(date.getTime()) && date.getTime() > Date.now());
+            }
+
+            function hasAnyDate(...values) {
+                return values.some((value) => {
+                    const date = value ? new Date(value) : null;
+                    return Boolean(date && !Number.isNaN(date.getTime()));
+                });
             }
         },
         { event: normalizedEvent, onboardingVersion: ONBOARDING_VERSION },

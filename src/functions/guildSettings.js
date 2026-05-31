@@ -11,11 +11,11 @@ const DEFAULT_GUILD_SETTINGS = {
         messageId: null,
     },
     playlist: {
-        enabled: true,
+        enabled: false,
         maxPlaylists: 10,
     },
     sleepTimer: {
-        enabled: true,
+        enabled: false,
         maxMinutes: 240,
     },
 };

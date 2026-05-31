@@ -1,13 +1,15 @@
 const { createStatusEmbed } = require("../../../functions/createResponseEmbed.js");
 const { disablePlayerMessage } = require("../../../functions/miniPlayer.js");
+const { canSendNotice } = require("../../../functions/noticeCooldown.js");
 const { t } = require("../../../functions/t.js");
+
+const LEAVE_NOTICE_COOLDOWN_MS = 10 * 60 * 1000;
 
 module.exports = async (client, player) => {
     if (!player) return;
 
     await disablePlayerMessage(client, player);
 
-    const channel = await client.channels.cache.get(player.textId);
     const isAutoplayEnabled = client.data.get("autoplay", player.guildId);
 
     if (isAutoplayEnabled) {
@@ -30,15 +32,6 @@ module.exports = async (client, player) => {
     const guildData = client.data.get(`guildData_${player.guildId}`);
     if (guildData && guildData.reconnect.status) return;
 
-    const embed = createStatusEmbed(client, {
-        tone: "info",
-        title: t(client, player.guildId, "music.queue.title"),
-        guildId: player.guildId,
-        description: t(client, player.guildId, "playerEvents.queueEmpty"),
-    });
-
-    if (channel) await channel.send({ embeds: [embed] });
-
     setTimeout(async () => {
         const updatedPlayer = client.rainlink.players.get(player.guildId);
         const updatedGuildData = client.data.get(`guildData_${player.guildId}`);
@@ -52,7 +45,8 @@ module.exports = async (client, player) => {
             });
 
             const textChannel = await client.channels.cache.get(updatedPlayer.textId);
-            if (textChannel) await textChannel.send({ embeds: [timeoutEmbed] });
+            const canNotify = canSendNotice(client, `${player.guildId}:voice-leave`, LEAVE_NOTICE_COOLDOWN_MS);
+            if (canNotify && textChannel) await textChannel.send({ embeds: [timeoutEmbed] });
             updatedPlayer.destroy();
         }
     }, client.config.leaveTimeout);

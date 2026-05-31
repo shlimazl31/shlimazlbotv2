@@ -170,6 +170,42 @@ function applyPanelAction(client, component, settings, interaction) {
             settings.miniPlayer.channelId = null;
             settings.miniPlayer.messageId = null;
             return { ok: true, message: text(settings, "settings.panel.fixedPanelDisabled") };
+        case "settings_mini_toggle":
+            if (settings.miniPlayer.enabled) {
+                settings.miniPlayer.enabled = false;
+                settings.miniPlayer.channelId = null;
+                settings.miniPlayer.messageId = null;
+                return { ok: true, message: text(settings, "settings.panel.fixedPanelDisabled") };
+            }
+
+            if (!canUsePremium(client, guildId, component.user.id, PREMIUM_FEATURES.MINI_PLAYER)) {
+                return premiumRequired(client, settings, PREMIUM_FEATURES.MINI_PLAYER, component.user.id);
+            }
+
+            settings.miniPlayer.enabled = true;
+            settings.miniPlayer.channelId = interaction.channelId;
+            settings.miniPlayer.messageId = null;
+            return { ok: true, message: text(settings, "settings.panel.fixedPanelSet", { channel: `${interaction.channel}` }) };
+        case "settings_playlist_toggle":
+            if (!settings.playlist.enabled && !canUsePremium(client, guildId, component.user.id, PREMIUM_FEATURES.SAVED_PLAYLISTS)) {
+                return premiumRequired(client, settings, PREMIUM_FEATURES.SAVED_PLAYLISTS, component.user.id);
+            }
+
+            settings.playlist.enabled = !settings.playlist.enabled;
+            return {
+                ok: true,
+                message: text(settings, settings.playlist.enabled ? "settings.panel.playlistEnabled" : "settings.panel.playlistDisabled"),
+            };
+        case "settings_sleep_timer_toggle":
+            if (!settings.sleepTimer.enabled && !canUsePremium(client, guildId, component.user.id, PREMIUM_FEATURES.SLEEP_TIMER)) {
+                return premiumRequired(client, settings, PREMIUM_FEATURES.SLEEP_TIMER, component.user.id);
+            }
+
+            settings.sleepTimer.enabled = !settings.sleepTimer.enabled;
+            return {
+                ok: true,
+                message: text(settings, settings.sleepTimer.enabled ? "settings.panel.sleepTimerEnabled" : "settings.panel.sleepTimerDisabled"),
+            };
         default:
             return { ok: false, message: text(settings, "settings.panel.unknown") };
     }
@@ -207,6 +243,16 @@ function createSettingsPanel(client, interaction, settings, message) {
             {
                 name: text(settings, "settings.panel.fixedMusicPanel"),
                 value: settings.miniPlayer.enabled ? `<#${settings.miniPlayer.channelId}>` : `\`${text(settings, "common.disabled")}\``,
+                inline: true,
+            },
+            {
+                name: text(settings, "settings.fields.playlist"),
+                value: settings.playlist.enabled ? `\`${text(settings, "common.enabled")}\`` : `\`${text(settings, "common.disabled")}\``,
+                inline: true,
+            },
+            {
+                name: text(settings, "settings.fields.sleepTimer"),
+                value: settings.sleepTimer.enabled ? `\`${text(settings, "common.enabled")}\`` : `\`${text(settings, "common.disabled")}\``,
                 inline: true,
             },
             {
@@ -260,6 +306,16 @@ function normalizePremiumSettings(client, guildId, userId, settings) {
         changed = true;
     }
 
+    if (settings.playlist.enabled && !hasPremiumFeature(client, guildId, PREMIUM_FEATURES.SAVED_PLAYLISTS, userId)) {
+        settings.playlist.enabled = false;
+        changed = true;
+    }
+
+    if (settings.sleepTimer.enabled && !hasPremiumFeature(client, guildId, PREMIUM_FEATURES.SLEEP_TIMER, userId)) {
+        settings.sleepTimer.enabled = false;
+        changed = true;
+    }
+
     return { changed };
 }
 
@@ -301,8 +357,21 @@ function createSettingsComponents(client, guildId, settings, disabled = false) {
         new ActionRowBuilder().addComponents(
             new ButtonBuilder().setCustomId("settings_music_clear").setLabel(text(settings, "settings.panel.labels.clearChannel")).setStyle(ButtonStyle.Secondary).setDisabled(disabled),
             new ButtonBuilder().setCustomId("settings_roles_clear").setLabel(text(settings, "settings.panel.labels.clearRoles")).setStyle(ButtonStyle.Secondary).setDisabled(disabled),
-            new ButtonBuilder().setCustomId("settings_mini_setup_current").setLabel(text(settings, "settings.panel.labels.setupPanel")).setStyle(ButtonStyle.Success).setDisabled(disabled),
-            new ButtonBuilder().setCustomId("settings_mini_disable").setLabel(text(settings, "settings.panel.labels.disablePanel")).setStyle(ButtonStyle.Danger).setDisabled(disabled),
+            new ButtonBuilder()
+                .setCustomId("settings_mini_toggle")
+                .setLabel(text(settings, settings.miniPlayer.enabled ? "settings.panel.labels.disablePanel" : "settings.panel.labels.setupPanel"))
+                .setStyle(settings.miniPlayer.enabled ? ButtonStyle.Danger : ButtonStyle.Success)
+                .setDisabled(disabled),
+            new ButtonBuilder()
+                .setCustomId("settings_playlist_toggle")
+                .setLabel(text(settings, settings.playlist.enabled ? "settings.panel.labels.playlistOff" : "settings.panel.labels.playlistOn"))
+                .setStyle(settings.playlist.enabled ? ButtonStyle.Success : ButtonStyle.Secondary)
+                .setDisabled(disabled),
+            new ButtonBuilder()
+                .setCustomId("settings_sleep_timer_toggle")
+                .setLabel(text(settings, settings.sleepTimer.enabled ? "settings.panel.labels.sleepTimerOff" : "settings.panel.labels.sleepTimerOn"))
+                .setStyle(settings.sleepTimer.enabled ? ButtonStyle.Success : ButtonStyle.Secondary)
+                .setDisabled(disabled),
         ),
     ];
 }

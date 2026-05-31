@@ -30,13 +30,7 @@ app.use(cors({
     methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Admin-Token']
 }));
-app.use(express.json({
-    verify: (req, res, buffer) => {
-        if ((req.originalUrl || '').includes('/payments/lemonsqueezy/webhook')) {
-            req.rawBody = buffer.toString('utf8');
-        }
-    },
-}));
+app.use(express.json());
 app.use('/logo', express.static(path.join(__dirname, '..', 'logo')));
 app.use(express.static(path.join(__dirname, 'public')));
 function sendDashboard(req, res) {

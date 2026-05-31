@@ -11,7 +11,7 @@ const {
     getUserPremium,
 } = require("../../../functions/premium.js");
 
-const DASHBOARD_PREMIUM_URL = "https://dashboard.yakupsemihbulut.com/pricing";
+const DASHBOARD_PREMIUM_URL = process.env.PATREON_URL || "https://www.patreon.com/cw/Shlimazlbot/membership";
 
 module.exports = {
     name: "premium",

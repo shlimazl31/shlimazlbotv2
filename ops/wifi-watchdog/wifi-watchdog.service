@@ -1,0 +1,8 @@
+[Unit]
+Description=ShlimazlBot Wi-Fi/network watchdog
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/wifi-watchdog.sh

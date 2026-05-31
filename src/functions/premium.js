@@ -68,7 +68,7 @@ const PLAN_CONFIG = {
     },
     [PLAN_TYPES.PLUS]: {
         name: "Plus",
-        price: Number(process.env.PREMIUM_PLUS_PRICE || 59),
+        price: Number(process.env.PREMIUM_PLUS_PRICE || 3.9),
         rank: 1,
         limits: {
             queue: Number(process.env.PREMIUM_PLUS_QUEUE_LIMIT || 150),
@@ -88,7 +88,7 @@ const PLAN_CONFIG = {
     },
     [PLAN_TYPES.PRO]: {
         name: "Pro",
-        price: Number(process.env.PREMIUM_PRO_PRICE || 99),
+        price: Number(process.env.PREMIUM_PRO_PRICE || 5.9),
         rank: 2,
         limits: {
             queue: Number(process.env.PREMIUM_PRO_QUEUE_LIMIT || 500),
@@ -257,12 +257,42 @@ function getGuildPremium(client, guildId) {
 function getUserPremium(client, userId) {
     if (!userId) return ensurePremiumObject();
 
+    const patreonPremium = getPatreonRolePremiumFromCache(client, userId);
+    if (patreonPremium.active) return patreonPremium;
+
     const userData = client.data.get(`userData_${userId}`) || { id: userId };
     const premium = ensurePremiumObject(userData.premium || {});
 
     userData.premium = premium;
     client.data.set(`userData_${userId}`, userData);
     return premium;
+}
+
+function getPatreonRolePremiumFromCache(client, userId) {
+    const guildId = process.env.PATREON_DISCORD_GUILD_ID || process.env.PATREON_GUILD_ID;
+    const plusRoleId = process.env.PATREON_PLUS_ROLE_ID;
+    const proRoleId = process.env.PATREON_PRO_ROLE_ID;
+    if (!client || !guildId || !userId || (!plusRoleId && !proRoleId)) return ensurePremiumObject();
+
+    const guild = client.guilds?.cache?.get(guildId);
+    const member = guild?.members?.cache?.get(userId);
+    const roles = member?.roles?.cache;
+    const hasRole = (roleId) => Boolean(roleId && roles?.has?.(roleId));
+    const plan = hasRole(proRoleId) ? PLAN_TYPES.PRO : hasRole(plusRoleId) ? PLAN_TYPES.PLUS : null;
+    if (!plan) return ensurePremiumObject();
+
+    return ensurePremiumObject({
+        active: true,
+        plan,
+        planType: plan.toUpperCase(),
+        status: SUBSCRIPTION_STATUS.ACTIVE,
+        billingType: BILLING_TYPES.MONTHLY,
+        source: "patreon_discord_role",
+        payment: {
+            provider: "patreon",
+            status: "active",
+        },
+    });
 }
 
 function getPremiumFeatures(premium) {

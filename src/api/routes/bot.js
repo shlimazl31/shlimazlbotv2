@@ -15,11 +15,6 @@ module.exports = (cluster) => {
         verifyOAuthState,
     } = require("../utils/dashboardSession.js");
     const {
-        createPremiumCheckout,
-        normalizeWebhookPayload,
-        verifyWebhookSignature,
-    } = require("../utils/lemonSqueezy.js");
-    const {
         applyPaymentWebhook,
         claimDashboardTrial,
         getAdminPremiumList,
@@ -45,7 +40,7 @@ module.exports = (cluster) => {
                 dashboardGuilds: "/api/bot/dashboard/guilds",
                 trial: "/api/bot/dashboard/premium/trial",
                 checkout: "/api/bot/dashboard/payments/checkout",
-                paymentWebhook: "/api/bot/payments/lemonsqueezy/webhook",
+                paymentProvider: "patreon",
                 premium: "/api/bot/premium/:guildId",
                 adminSummary: "/api/bot/admin/summary",
                 dashboardAdminPremium: "/api/bot/dashboard/admin/premium",
@@ -221,32 +216,19 @@ module.exports = (cluster) => {
             const context = await preparePremiumCheckout(cluster, req.session.userId, null, plan);
             if (!context.ok) return res.status(context.status || 400).json({ error: context.error });
 
-            const checkout = await createPremiumCheckout({
-                userId: req.session.userId,
-                plan,
+            const query = new URLSearchParams({
+                utm_source: "dashboard",
+                utm_medium: "checkout_endpoint",
+                utm_campaign: plan,
             });
-            if (!checkout.ok) return res.status(checkout.status || 400).json(checkout);
 
-            return res.json(checkout);
+            return res.json({
+                ok: true,
+                provider: "patreon",
+                url: `${process.env.PATREON_URL || "https://www.patreon.com/cw/Shlimazlbot/membership"}?${query.toString()}`,
+            });
         } catch (error) {
             console.error("Premium checkout error:", error);
-            return res.status(500).json({ error: "Internal Server Error" });
-        }
-    });
-
-    router.post("/payments/lemonsqueezy/webhook", async (req, res) => {
-        try {
-            const signature = req.headers["x-signature"];
-            const verify = verifyWebhookSignature(req.rawBody || JSON.stringify(req.body || {}), signature);
-            if (!verify.ok) return res.status(verify.status || 401).json({ error: verify.error });
-
-            const event = normalizeWebhookPayload(req.body || {});
-            const result = await applyPaymentWebhook(cluster, event);
-            if (!result.ok) return res.status(result.status || 400).json({ error: result.error });
-
-            return res.json({ ok: true });
-        } catch (error) {
-            console.error("Lemon Squeezy webhook error:", error);
             return res.status(500).json({ error: "Internal Server Error" });
         }
     });
@@ -352,6 +334,7 @@ module.exports = (cluster) => {
                     version: context.version,
                     clusterId: client.cluster?.id ?? null,
                     shardCount: client.options.shardCount || 1,
+                    status: client.ws.status === 0 ? "online" : "offline",
                     uptime: Math.floor(client.uptime / 1000),
                     ping: client.ws.ping,
                     guilds: client.guilds.cache.size,
@@ -394,19 +377,32 @@ module.exports = (cluster) => {
             const premiumOnly = req.query.premium === "true";
             const guilds = await cluster.eval(
                 async (client, context) => {
-                    const docs = await client.guildData.find({}).lean().limit(context.limit);
+                    let cachedGuilds = Array.from(client.guilds.cache.values());
+
+                    if (!cachedGuilds.length && typeof client.guilds.fetch === "function") {
+                        const fetchedGuilds = await client.guilds.fetch().catch(() => null);
+                        cachedGuilds = collectionValues(fetchedGuilds);
+                    }
+
+                    const guildIds = cachedGuilds.map((guild) => guild.id);
+                    const docs = await client.guildData.find({ id: { $in: guildIds } }).lean();
+                    const docsById = new Map(docs.map((doc) => [doc.id, doc]));
                     const players = collectionValues(client.rainlink.players);
 
-                    return docs
-                        .map((doc) => {
-                            const guild = client.guilds.cache.get(doc.id);
-                            const player = players.find((activePlayer) => activePlayer.guildId === doc.id);
+                    return cachedGuilds
+                        .map((guild) => {
+                            const doc = docsById.get(guild.id) || {};
+                            const player = players.find((activePlayer) => activePlayer.guildId === guild.id);
                             const premium = normalizePremium(doc.premium);
 
                             return {
-                                id: doc.id,
-                                name: guild?.name || "Unknown guild",
-                                memberCount: guild?.memberCount || null,
+                                id: guild.id,
+                                name: guild.name || "Unknown guild",
+                                iconUrl: resolveGuildIcon(guild),
+                                ownerId: guild.ownerId || guild.owner_id || null,
+                                memberCount: guild.memberCount || null,
+                                joinedAt: guild.joinedTimestamp ? new Date(guild.joinedTimestamp).toISOString() : null,
+                                available: guild.available !== false,
                                 language: doc.settings?.language || "tr",
                                 playerMode: doc.settings?.playerMode || "compact",
                                 musicChannelId: doc.settings?.musicChannelId || null,
@@ -423,7 +419,25 @@ module.exports = (cluster) => {
                                     : { active: false },
                             };
                         })
-                        .filter((guild) => !context.premiumOnly || guild.premium.active);
+                        .filter((guild) => !context.premiumOnly || guild.premium.active)
+                        .sort((a, b) => (b.memberCount || 0) - (a.memberCount || 0))
+                        .slice(0, context.limit);
+
+                    function resolveGuildIcon(guild) {
+                        try {
+                            if (typeof guild.iconURL === "function") {
+                                return guild.iconURL({ extension: "png", size: 96 }) || null;
+                            }
+
+                            if (guild.icon && guild.id) {
+                                return `https://cdn.discordapp.com/icons/${guild.id}/${guild.icon}.png?size=96`;
+                            }
+                        } catch (error) {
+                            return null;
+                        }
+
+                        return null;
+                    }
 
                     function collectionValues(collection) {
                         if (!collection) return [];
@@ -953,7 +967,7 @@ function requireAdminToken(req, res, next) {
 
     const authHeader = req.headers.authorization || "";
     const bearerToken = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : null;
-    const providedToken = req.headers["x-admin-token"] || bearerToken || req.query.token;
+    const providedToken = req.headers["x-admin-token"] || bearerToken;
 
     if (providedToken !== expectedToken) {
         return res.status(401).json({ error: "Unauthorized" });
